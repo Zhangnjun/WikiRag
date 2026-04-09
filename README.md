@@ -328,8 +328,8 @@ python scripts/run_rag_eval.py
 - 图片与示意章节始终保留，缺图时填 `待补充`
 - AI 是增强，不可用时自动降级到规则模式
 - Huawei Wiki 地址仍使用：
-  - 搜索：`https://wiki.huawei.com/devops-knowledge-management/api/search/wiki`
-  - 详情：`https://wiki.huawei.com/devops-knowledge-management/api/getWiki`
+  - 搜索：`https://wiki.josewei.com/zdevops-knowledge-management/api/search/wiki`
+  - 详情：`https://wiki.josewei.com/zdevops-knowledge-management/api/getWiki`
 - Knowledge 文档创建或重新规范化后，会自动：
   - 切分 chunk
   - 生成 embedding
