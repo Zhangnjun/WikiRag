@@ -1,0 +1,50 @@
+app:
+  name: "WikiRag"
+  host: "0.0.0.0"
+  port: 8000
+  api_key: "change-me"
+  log_level: "INFO"
+
+storage:
+  sqlite_path: "./app/data/wikirag.db"
+
+wiki:
+  search_url: "https://wiki.huawei.com/devops-knowledge-management/api/search/wiki"
+  detail_url: "https://wiki.huawei.com/devops-knowledge-management/api/getWiki"
+  headers:
+    Content-Type: "application/json"
+    Cookie: "${HUAWEI_WIKI_COOKIE}"
+    User-Agent: "WikiRag/0.1"
+  default_search_payload:
+    pagination:
+      current_page: 1
+      page_size: 10
+    searchKey: ""
+    status: ["published"]
+    searchType: "5"
+    wikiSn: null
+    searchScope: "ALL"
+    domainId: null
+    kanbanId: "17668"
+    isAccurate: false
+    sortFiled: "create_time"
+    sortWay: "DESC"
+  detail_type: "UI"
+  timeout: 20
+  verify_ssl: true
+
+ai:
+  enabled: false
+  chat_base_url: "https://api.openai.com/v1"
+  chat_api_key: "${INTERNAL_AI_CHAT_API_KEY}"
+  chat_model_name: "${INTERNAL_AI_CHAT_MODEL}"
+  chat_timeout: 60
+  embedding_base_url: "https://api.openai.com/v1"
+  embedding_api_key: "${INTERNAL_AI_EMBEDDING_API_KEY}"
+  embedding_model_name: "${INTERNAL_AI_EMBEDDING_MODEL}"
+  embedding_timeout: 30
+
+rag:
+  embedding_dimension: 64
+  session_max_turns: 4
+  max_context_chunks: 6

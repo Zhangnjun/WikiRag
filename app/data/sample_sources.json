@@ -1,0 +1,12 @@
+[
+  {
+    "source_title": "内部 skill 接入与仓库扫描说明",
+    "source_type": "manual",
+    "source_url": "https://wiki.huawei.com/domains/156/wiki/4198/WIKI2026040510674417",
+    "raw_content": "适用于内部研发协作。内容包含仓库扫描、skill 接入、联调步骤、常见失败日志、配置变更说明。若扫描失败，请检查权限、配置项和工具链版本。",
+    "owner": "平台研发组",
+    "tags": ["研发", "skill", "仓库扫描", "平台"],
+    "updated_at": "2026-04-10T00:00:00+00:00",
+    "extra_notes": "流程图待补充"
+  }
+]

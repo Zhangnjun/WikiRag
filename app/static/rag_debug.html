@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag Debug</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #1f2937; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    h1, h2, h3 { margin: 0 0 12px; }
+    .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+    .card { background: #fff; border: 1px solid #dbe2ea; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    input, textarea, select { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+    textarea { min-height: 84px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .checks { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 14px; }
+    .check { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+    .check input { width: auto; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; font-size: 14px; }
+    button.secondary { background: #475569; }
+    button.light { background: #e2e8f0; color: #0f172a; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .status { display: inline-block; padding: 4px 8px; background: #e2e8f0; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+    .item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .muted { color: #64748b; font-size: 13px; }
+    .error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; display: none; white-space: pre-wrap; }
+    .ok { color: #0f766e; }
+    .split { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .empty { color: #94a3b8; font-style: italic; }
+    @media (max-width: 980px) { .grid, .row, .row3 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>WikiRag Debug UI</h1>
+    <p class="muted">用于调试 RAG 检索与回答过程。页面直接调用 <span class="mono">/api/rag/query</span>。</p>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h2>查询输入区</h2>
+          <div class="row">
+            <div>
+              <label for="apiKey">X-API-Key</label>
+              <input id="apiKey" />
+            </div>
+            <div>
+              <label for="sessionId">session_id</label>
+              <input id="sessionId" placeholder="可为空，留空自动创建" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="query">query</label>
+              <textarea id="query"></textarea>
+            </div>
+            <div>
+              <label for="docType">doc_type</label>
+              <input id="docType" />
+            </div>
+          </div>
+          <div class="row3">
+            <div>
+              <label for="topK">top_k</label>
+              <select id="topK">
+                <option>3</option>
+                <option>5</option>
+                <option>8</option>
+              </select>
+            </div>
+            <div>
+              <label for="sourceType">source_type</label>
+              <input id="sourceType" placeholder="可选" />
+            </div>
+            <div>
+              <label for="productLine">product_line</label>
+              <input id="productLine" placeholder="可选" />
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="useAi" /> use_ai</label>
+            <label class="check"><input type="checkbox" id="useRerank" checked /> use_rerank</label>
+            <label class="check"><input type="checkbox" id="debug" checked /> debug</label>
+          </div>
+          <div class="actions">
+            <button id="submitBtn">提交</button>
+            <button class="secondary" id="exampleBtn">填充示例</button>
+            <button class="light" id="copyBtn">复制当前请求 JSON</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>错误提示区</h2>
+          <div id="errorBox" class="error"></div>
+          <p class="muted">接口报错会直接显示在这里，不只是在控制台打印。</p>
+        </div>
+
+        <div class="card">
+          <h2>回答展示区</h2>
+          <div class="row3">
+            <div><span class="muted">status</span><div id="status" class="status">waiting</div></div>
+            <div><span class="muted">latency</span><div id="latency" class="mono">-</div></div>
+            <div><span class="muted">session_id</span><div id="answerSessionId" class="mono">-</div></div>
+          </div>
+          <h3>answer</h3>
+          <div id="answer" class="mono empty">提交后显示结果</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>引用展示区</h2>
+          <div id="citations" class="empty">暂无引用</div>
+        </div>
+        <div class="card">
+          <h2>检索片段展示区</h2>
+          <div id="retrievedChunks" class="empty">暂无检索片段</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Debug 信息区</h2>
+      <div class="split">
+        <div>
+          <h3>query_rewrite</h3>
+          <div id="queryRewrite" class="mono empty">暂无</div>
+        </div>
+        <div>
+          <h3>keyword_hits</h3>
+          <div id="keywordHits" class="empty">暂无</div>
+        </div>
+        <div>
+          <h3>vector_hits</h3>
+          <div id="vectorHits" class="empty">暂无</div>
+        </div>
+        <div>
+          <h3>final_hits</h3>
+          <div id="finalHits" class="empty">暂无</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const examplePayload = {
+      apiKey: "change-me",
+      query: "配置变更异常后怎么回滚",
+      session_id: "",
+      top_k: 3,
+      use_ai: false,
+      use_rerank: true,
+      debug: true,
+      doc_type: "配置与治理知识库",
+      source_type: "",
+      product_line: ""
+    };
+
+    function fillExample() {
+      document.getElementById("apiKey").value = examplePayload.apiKey;
+      document.getElementById("query").value = examplePayload.query;
+      document.getElementById("sessionId").value = examplePayload.session_id;
+      document.getElementById("topK").value = String(examplePayload.top_k);
+      document.getElementById("useAi").checked = examplePayload.use_ai;
+      document.getElementById("useRerank").checked = examplePayload.use_rerank;
+      document.getElementById("debug").checked = examplePayload.debug;
+      document.getElementById("docType").value = examplePayload.doc_type;
+      document.getElementById("sourceType").value = examplePayload.source_type;
+      document.getElementById("productLine").value = examplePayload.product_line;
+    }
+
+    function buildRequest() {
+      return {
+        query: document.getElementById("query").value,
+        session_id: document.getElementById("sessionId").value || null,
+        top_k: Number(document.getElementById("topK").value || 3),
+        use_ai: document.getElementById("useAi").checked,
+        use_rerank: document.getElementById("useRerank").checked,
+        debug: document.getElementById("debug").checked,
+        filters: {
+          doc_type: document.getElementById("docType").value || null,
+          source_type: document.getElementById("sourceType").value || null,
+          product_line: document.getElementById("productLine").value || null,
+          source_id: null
+        }
+      };
+    }
+
+    function showError(message) {
+      const box = document.getElementById("errorBox");
+      box.style.display = "block";
+      box.textContent = message;
+    }
+
+    function clearError() {
+      const box = document.getElementById("errorBox");
+      box.style.display = "none";
+      box.textContent = "";
+    }
+
+    function renderList(containerId, items, renderer) {
+      const el = document.getElementById(containerId);
+      if (!items || !items.length) {
+        el.innerHTML = '<div class="empty">暂无</div>';
+        return;
+      }
+      el.innerHTML = items.map(renderer).join("");
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    async function submitQuery() {
+      clearError();
+      document.getElementById("status").textContent = "loading";
+      const payload = buildRequest();
+      try {
+        const response = await fetch("/api/rag/query", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": document.getElementById("apiKey").value
+          },
+          body: JSON.stringify(payload)
+        });
+        const body = await response.json();
+        if (!response.ok) {
+          showError(body.message || JSON.stringify(body, null, 2));
+          document.getElementById("status").textContent = "error";
+          return;
+        }
+        document.getElementById("status").textContent = body.status || "success";
+        document.getElementById("latency").textContent = (body.latency_ms || 0) + " ms";
+        document.getElementById("answerSessionId").textContent = body.session_id || "-";
+        document.getElementById("sessionId").value = body.session_id || "";
+        document.getElementById("answer").textContent = body.answer || "";
+
+        renderList("citations", body.citations, (item) => `
+          <div class="item">
+            <div><strong>${escapeHtml(item.doc_title)}</strong></div>
+            <div class="mono">doc_id: ${escapeHtml(item.doc_id)}</div>
+            <div class="mono">source_id: ${escapeHtml(item.source_id)}</div>
+            <div class="mono">chunk_id: ${escapeHtml(item.chunk_id)}</div>
+            <div>section: ${escapeHtml(item.section_title)}</div>
+            <div class="muted">${escapeHtml(item.chunk_summary)}</div>
+          </div>
+        `);
+
+        renderList("retrievedChunks", body.retrieved_chunks, (item) => `
+          <div class="item">
+            <div><strong>${escapeHtml(item.section_title)}</strong> <span class="status">score ${escapeHtml(item.score)}</span></div>
+            <div class="mono">chunk_id: ${escapeHtml(item.chunk_id)}</div>
+            <div class="mono">doc_id: ${escapeHtml(item.doc_id)} | source_id: ${escapeHtml(item.source_id)}</div>
+            <div class="mono">doc_type: ${escapeHtml(item.doc_type)} | source_type: ${escapeHtml(item.source_type)}</div>
+            <div class="muted">${escapeHtml(item.content.slice(0, 320))}</div>
+            <div class="mono">${escapeHtml(JSON.stringify(item.score_detail, null, 2))}</div>
+          </div>
+        `);
+
+        const debugInfo = body.debug_info || {};
+        document.getElementById("queryRewrite").textContent = debugInfo.query_rewrite || "暂无";
+        renderList("keywordHits", debugInfo.keyword_hits || [], (item) => `
+          <div class="item">
+            <div><strong>${escapeHtml(item.section_title || "-")}</strong></div>
+            <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
+            <div class="mono">keyword_score: ${escapeHtml(item.keyword_score || 0)}</div>
+            <div class="mono">keyword_hits: ${escapeHtml(JSON.stringify(item.keyword_hits || []))}</div>
+            <div class="muted">${escapeHtml((item.content || "").slice(0, 240))}</div>
+          </div>
+        `);
+        renderList("vectorHits", debugInfo.vector_hits || [], (item) => `
+          <div class="item">
+            <div><strong>${escapeHtml(item.section_title || "-")}</strong></div>
+            <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
+            <div class="mono">vector_score: ${escapeHtml(item.vector_score || 0)}</div>
+            <div class="muted">${escapeHtml((item.content || "").slice(0, 240))}</div>
+          </div>
+        `);
+        renderList("finalHits", debugInfo.final_hits || [], (item) => `
+          <div class="item">
+            <div><strong>${escapeHtml(item.section_title || "-")}</strong></div>
+            <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
+            <div class="mono">hybrid_score: ${escapeHtml(item.hybrid_score || 0)}</div>
+            <div class="mono">keyword_score: ${escapeHtml(item.keyword_score || 0)} | vector_score: ${escapeHtml(item.vector_score || 0)}</div>
+            <div class="muted">${escapeHtml((item.content || "").slice(0, 240))}</div>
+          </div>
+        `);
+      } catch (error) {
+        showError(String(error));
+        document.getElementById("status").textContent = "error";
+      }
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", submitQuery);
+    document.getElementById("exampleBtn").addEventListener("click", fillExample);
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const payload = buildRequest();
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    });
+
+    fillExample();
+  </script>
+</body>
+</html>

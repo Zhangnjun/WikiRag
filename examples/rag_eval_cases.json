@@ -1,0 +1,103 @@
+[
+  {
+    "case_id": "case-001",
+    "title": "配置回滚问题",
+    "query": "配置变更异常后怎么回滚",
+    "expected_doc_type": "配置与治理知识库",
+    "expected_keywords": ["回滚", "配置项", "发布"],
+    "expected_should_hit_sections": ["操作步骤 / 排查步骤", "常见错误 / 风险点"],
+    "expected_should_not_miss": ["回滚规则"],
+    "notes": "验证治理类文档是否被稳定召回"
+  },
+  {
+    "case_id": "case-002",
+    "title": "运维告警排查",
+    "query": "推理服务告警怎么排查",
+    "expected_doc_type": "运维知识库",
+    "expected_keywords": ["告警", "日志", "恢复"],
+    "expected_should_hit_sections": ["操作步骤 / 排查步骤"],
+    "expected_should_not_miss": ["检查日志"],
+    "notes": "验证运维排查语义"
+  },
+  {
+    "case_id": "case-003",
+    "title": "新手开通",
+    "query": "第一次用推理平台要先准备什么",
+    "expected_doc_type": "新手知识库",
+    "expected_keywords": ["账号开通", "权限", "环境"],
+    "expected_should_hit_sections": ["前置条件"],
+    "expected_should_not_miss": ["账号开通"],
+    "notes": "验证新手场景"
+  },
+  {
+    "case_id": "case-004",
+    "title": "研发协作 skill",
+    "query": "skill 接入失败要检查什么",
+    "expected_doc_type": "内部研发协作知识库",
+    "expected_keywords": ["skill", "权限", "配置项"],
+    "expected_should_hit_sections": ["操作步骤 / 排查步骤"],
+    "expected_should_not_miss": ["仓库扫描"],
+    "notes": "验证研发协作类"
+  },
+  {
+    "case_id": "case-005",
+    "title": "FAQ 权限",
+    "query": "权限申请后还不能访问怎么办",
+    "expected_doc_type": "新手知识库",
+    "expected_keywords": ["权限", "审批", "角色绑定"],
+    "expected_should_hit_sections": ["FAQ"],
+    "expected_should_not_miss": ["角色绑定"],
+    "notes": "验证 FAQ 短问句"
+  },
+  {
+    "case_id": "case-006",
+    "title": "模糊问法看发布",
+    "query": "线上改完东西出问题了怎么办",
+    "expected_doc_type": "配置与治理知识库",
+    "expected_keywords": ["回滚", "发布", "异常"],
+    "expected_should_hit_sections": ["处理建议 / 最佳实践"],
+    "expected_should_not_miss": ["回滚策略"],
+    "notes": "验证模糊问法"
+  },
+  {
+    "case_id": "case-007",
+    "title": "日志采集失败",
+    "query": "日志采集没上来要先查哪里",
+    "expected_doc_type": "运维知识库",
+    "expected_keywords": ["agent", "采集配置", "网络"],
+    "expected_should_hit_sections": ["操作步骤 / 排查步骤"],
+    "expected_should_not_miss": ["磁盘空间"],
+    "notes": "验证日志排查"
+  },
+  {
+    "case_id": "case-008",
+    "title": "首次创建任务",
+    "query": "第一次创建推理任务的步骤",
+    "expected_doc_type": "新手知识库",
+    "expected_keywords": ["模型", "数据集", "提交任务"],
+    "expected_should_hit_sections": ["操作步骤 / 排查步骤"],
+    "expected_should_not_miss": ["配额不足"],
+    "notes": "验证操作指南"
+  },
+  {
+    "case_id": "case-009",
+    "title": "联调环境变更",
+    "query": "联调环境改配置前要确认什么",
+    "expected_doc_type": "内部研发协作知识库",
+    "expected_keywords": ["联调", "配置项", "回滚"],
+    "expected_should_hit_sections": ["前置条件"],
+    "expected_should_not_miss": ["参与角色"],
+    "notes": "验证研发协作配置变更"
+  },
+  {
+    "case_id": "case-010",
+    "title": "多轮承接",
+    "query": "那如果还是失败呢",
+    "expected_doc_type": "配置与治理知识库",
+    "expected_keywords": ["错误日志", "回滚", "重试"],
+    "expected_should_hit_sections": ["FAQ", "操作步骤 / 排查步骤"],
+    "expected_should_not_miss": ["最近发布记录"],
+    "notes": "验证 session_id 场景",
+    "pre_queries": ["任务失败后先看什么", "如果是变更后失败呢"]
+  }
+]
