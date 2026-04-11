@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from openpyxl import Workbook
 
 from app.api.deps import require_api_key
 from app.core.exceptions import AppError
@@ -14,6 +17,7 @@ from app.dependencies import (
     get_knowledge_service,
     get_rag_service,
     get_source_service,
+    get_wiki_recommend_service,
     get_wiki_service,
 )
 from app.schemas.common import DeleteResponse, HealthResponse, MessageResponse
@@ -33,7 +37,14 @@ from app.schemas.source import (
     SourceListResponse,
     SourceRecordResponse,
 )
-from app.schemas.wiki import WikiSearchRequest, WikiSearchResponse
+from app.schemas.wiki import (
+    WikiRecommendExpandedRequest,
+    WikiRecommendExpandedResponse,
+    WikiRecommendRequest,
+    WikiRecommendResponse,
+    WikiSearchRequest,
+    WikiSearchResponse,
+)
 from app.utils.trace import new_trace_id
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
@@ -130,8 +141,120 @@ def delete_source(source_id: str) -> DeleteResponse:
 
 @router.post("/api/wiki/search", response_model=WikiSearchResponse)
 def wiki_search(request: WikiSearchRequest) -> WikiSearchResponse:
-    payload = get_wiki_service().normalize_search_results(request.search_query, page=request.page, page_size=request.page_size)
+    payload = get_wiki_service().normalize_search_results(
+        request.search_query,
+        page=request.page,
+        page_size=request.page_size,
+        cookie_override=request.cookie,
+    )
     return WikiSearchResponse(**payload)
+
+
+@router.post("/api/wiki/recommend", response_model=WikiRecommendResponse)
+def wiki_recommend(request: WikiRecommendRequest) -> WikiRecommendResponse:
+    payload = get_wiki_recommend_service().recommend(
+        profile_text=request.profile_text,
+        focus_topics=request.focus_topics,
+        page_size=request.page_size,
+        max_queries=request.max_queries,
+        cookie_override=request.cookie,
+    )
+    return WikiRecommendResponse(**payload)
+
+
+@router.post("/api/wiki/recommend/expanded", response_model=WikiRecommendExpandedResponse)
+def wiki_recommend_expanded(request: WikiRecommendExpandedRequest) -> WikiRecommendExpandedResponse:
+    payload = get_wiki_recommend_service().recommend_expanded(
+        profile_text=request.profile_text,
+        focus_topics=request.focus_topics,
+        page_size=request.page_size,
+        max_queries=request.max_queries,
+        pages_per_query=request.pages_per_query,
+        min_score=request.min_score,
+        cookie_override=request.cookie,
+        trace_id=new_trace_id(),
+    )
+    return WikiRecommendExpandedResponse(**payload)
+
+
+@router.post("/api/wiki/recommend/expanded/export", include_in_schema=True)
+def wiki_recommend_expanded_export(request: WikiRecommendExpandedRequest) -> FileResponse:
+    payload = get_wiki_recommend_service().recommend_expanded(
+        profile_text=request.profile_text,
+        focus_topics=request.focus_topics,
+        page_size=request.page_size,
+        max_queries=request.max_queries,
+        pages_per_query=request.pages_per_query,
+        min_score=request.min_score,
+        cookie_override=request.cookie,
+        trace_id=new_trace_id(),
+    )
+
+    workbook = Workbook()
+    summary_sheet = workbook.active
+    summary_sheet.title = "summary"
+    summary_sheet.append(["detected_doc_type", payload["detected_doc_type"]])
+    summary_sheet.append(["query_candidates", " | ".join(payload["query_candidates"])])
+    summary = payload["summary"]
+    summary_sheet.append(["total_candidates", summary["total_candidates"]])
+    summary_sheet.append(["deduped_candidates", summary["deduped_candidates"]])
+    summary_sheet.append(["high_relevance", summary["high_relevance"]])
+    summary_sheet.append(["medium_relevance", summary["medium_relevance"]])
+    summary_sheet.append(["low_relevance", summary["low_relevance"]])
+
+    items_sheet = workbook.create_sheet("recommendations")
+    items_sheet.append(
+        [
+            "score",
+            "title",
+            "sn",
+            "url",
+            "reason",
+            "matched_terms",
+            "query_used",
+            "skill_feasibility",
+            "skill_reason",
+            "domain_id",
+            "domain_title",
+            "kanban_id",
+            "kanban_title",
+            "summary",
+            "updated_at",
+            "created_at",
+        ]
+    )
+    for item in payload["items"]:
+        items_sheet.append(
+            [
+                item.get("score", 0),
+                item.get("title", ""),
+                item.get("sn", ""),
+                item.get("url", ""),
+                item.get("reason", ""),
+                " | ".join(item.get("matched_terms", [])),
+                item.get("query_used", ""),
+                item.get("skill_feasibility", ""),
+                item.get("skill_reason", ""),
+                item.get("domain_id"),
+                item.get("domain_title", ""),
+                item.get("kanban_id"),
+                item.get("kanban_title", ""),
+                item.get("summary", ""),
+                item.get("updated_at", ""),
+                item.get("created_at", ""),
+            ]
+        )
+
+    with NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        workbook.save(tmp.name)
+        export_path = tmp.name
+
+    filename = "wiki_recommendations_%s.xlsx" % datetime.now().strftime("%Y%m%d_%H%M%S")
+    return FileResponse(
+        path=export_path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @router.post("/api/knowledge/normalize", response_model=KnowledgeDocumentResponse)

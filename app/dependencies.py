@@ -20,6 +20,7 @@ from app.services.retrieval_service import RetrievalService
 from app.services.source_service import SourceService
 from app.services.vector_search_service import VectorSearchService
 from app.services.wiki_service import WikiService
+from app.services.wiki_recommend_service import WikiRecommendService
 
 settings = get_settings()
 
@@ -52,6 +53,11 @@ def get_rag_repository() -> RAGRepository:
 @lru_cache(maxsize=1)
 def get_wiki_service() -> WikiService:
     return WikiService(settings.wiki)
+
+
+@lru_cache(maxsize=1)
+def get_wiki_recommend_service() -> WikiRecommendService:
+    return WikiRecommendService(get_wiki_service(), get_classifier())
 
 
 @lru_cache(maxsize=1)

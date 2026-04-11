@@ -35,9 +35,10 @@ class SourceService:
             wiki_sn = payload.get("wiki_sn")
             domain_id = payload.get("domain_id")
             kanban_id = payload.get("kanban_id")
+            cookie_override = payload.get("cookie")
             if not wiki_sn:
                 raise AppError("wiki_sn is required when fetch_from_wiki=true; use /api/wiki/search first to choose result")
-            detail = self.wiki_service.fetch_detail(wiki_sn, domain_id, kanban_id)
+            detail = self.wiki_service.fetch_detail(wiki_sn, domain_id, kanban_id, cookie_override=cookie_override)
             source_title = detail.get("title") or source_title
             source_url = self.wiki_service.build_url(domain_id, kanban_id, wiki_sn)
             raw_content = detail.get("rendered_text") or raw_content
@@ -49,6 +50,7 @@ class SourceService:
                     "kanban_id": kanban_id,
                     "image_urls": detail.get("image_urls", []),
                     "raw_html": detail.get("raw_html", ""),
+                    "wiki_detail_url": self.wiki_service.settings.detail_url,
                 }
             )
 
@@ -199,6 +201,7 @@ class SourceService:
                     "updated_at": wiki_item.get("updated_at"),
                     "extra_notes": wiki_item.get("extra_notes"),
                     "metadata": wiki_item.get("metadata", {}),
+                    "cookie": wiki_item.get("cookie") or payload.get("cookie"),
                     "skip_if_exists": payload.get("skip_if_exists", True),
                     "overwrite_if_exists": payload.get("overwrite_if_exists", False),
                 }

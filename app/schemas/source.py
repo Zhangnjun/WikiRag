@@ -22,6 +22,7 @@ class SourceImportRequest(BaseModel):
     wiki_items: List[Dict[str, Any]] = Field(default_factory=list)
     skip_if_exists: bool = True
     overwrite_if_exists: bool = False
+    cookie: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -66,6 +67,7 @@ class BatchImportItem(BaseModel):
     wiki_sn: Optional[str] = None
     domain_id: Optional[int] = None
     kanban_id: Optional[int] = None
+    cookie: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -75,6 +77,7 @@ class BatchImportRequest(BaseModel):
     wiki_items: List[Dict[str, Any]] = Field(default_factory=list)
     skip_if_exists: bool = True
     overwrite_if_exists: bool = False
+    cookie: Optional[str] = None
 
 
 class BatchImportItemResult(BaseModel):

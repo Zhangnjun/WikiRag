@@ -18,7 +18,13 @@ class WikiService:
     def __init__(self, settings: WikiSettings) -> None:
         self.settings = settings
 
-    def search(self, query: str, page: int = 1, page_size: int = 10) -> List[Dict[str, Any]]:
+    def _build_headers(self, cookie_override: Optional[str] = None) -> Dict[str, str]:
+        headers = dict(self.settings.headers)
+        if cookie_override:
+            headers["Cookie"] = cookie_override
+        return headers
+
+    def search(self, query: str, page: int = 1, page_size: int = 10, cookie_override: Optional[str] = None) -> List[Dict[str, Any]]:
         payload = copy.deepcopy(self.settings.default_search_payload)
         payload["searchKey"] = query
         payload.setdefault("pagination", {})
@@ -27,7 +33,7 @@ class WikiService:
 
         response = requests.post(
             self.settings.search_url,
-            headers=self.settings.headers,
+            headers=self._build_headers(cookie_override),
             json=payload,
             timeout=self.settings.timeout,
             verify=self.settings.verify_ssl,
@@ -38,7 +44,13 @@ class WikiService:
             raise AppError("Wiki search response missing data.result", 502)
         return results
 
-    def fetch_detail(self, wiki_sn: str, domain_id: Optional[int], kanban_id: Optional[int]) -> Dict[str, Any]:
+    def fetch_detail(
+        self,
+        wiki_sn: str,
+        domain_id: Optional[int],
+        kanban_id: Optional[int],
+        cookie_override: Optional[str] = None,
+    ) -> Dict[str, Any]:
         payload = {
             "wiki_sn": wiki_sn,
             "type": self.settings.detail_type,
@@ -48,7 +60,7 @@ class WikiService:
         }
         response = requests.post(
             self.settings.detail_url,
-            headers=self.settings.headers,
+            headers=self._build_headers(cookie_override),
             json=payload,
             timeout=self.settings.timeout,
             verify=self.settings.verify_ssl,
@@ -71,8 +83,14 @@ class WikiService:
             return f"https://wiki.huawei.com/domains/{domain_id}/wiki/{kanban_id}/{wiki_sn}"
         return ""
 
-    def normalize_search_results(self, query: str, page: int = 1, page_size: int = 10) -> Dict[str, Any]:
-        items = self.search(query, page=page, page_size=page_size)
+    def normalize_search_results(
+        self,
+        query: str,
+        page: int = 1,
+        page_size: int = 10,
+        cookie_override: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        items = self.search(query, page=page, page_size=page_size, cookie_override=cookie_override)
         normalized = []
         for item in items:
             assigned_domain = item.get("assigned_domain") or {}
