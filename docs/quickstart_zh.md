@@ -33,22 +33,11 @@ uvicorn app.main:app --reload
 - Swagger 页面：http://127.0.0.1:8000/docs
 - 健康检查：http://127.0.0.1:8000/api/health
 
-## 第 5 步：准备演示数据
+## 第 5 步：准备第一条数据
 
-如果你只是想马上看效果，执行：
+你至少需要先准备一条知识数据，系统才能检索。
 
-```bash
-python scripts/run_rag_eval.py
-```
-
-这个脚本会自动：
-
-1. 导入演示 source
-2. 生成 knowledge 文档
-3. 自动切 chunk
-4. 自动生成 embedding
-5. 跑一遍 RAG 评测
-6. 在 `outputs/` 目录生成报告
+最简单的方式是先手工导入一条 source，然后执行 normalize。
 
 ## 第 6 步：打开调试页
 
@@ -97,7 +86,7 @@ http://127.0.0.1:8000/rag-debug
 - `final_hits`
 - `query_rewrite`
 
-## 第 8 步：如果你想自己导入一条数据
+## 第 8 步：导入一条数据
 
 先导入 source：
 
@@ -108,7 +97,7 @@ curl -X POST "http://127.0.0.1:8000/api/source/import" \
   -d '{
     "source_title":"配置变更发布与回滚规则",
     "source_type":"manual",
-    "source_url":"https://wiki.huawei.com/demo/config-rollback",
+    "source_url":"https://wiki.huawei.com/domains/156/wiki/4198/WIKI2026040410674038",
     "raw_content":"配置项变更前需要确认审批、灰度范围、生效范围和权限要求。发布后如果出现异常，应按回滚规则恢复。",
     "owner":"治理组",
     "tags":["配置","回滚","治理"]
@@ -164,13 +153,13 @@ curl -X POST "http://127.0.0.1:8000/api/wiki/search" \
 
 ### 为什么没有结果
 
-一般是因为数据库里还没有知识数据。
+一般是因为数据库里还没有知识数据，或者只导入了 source 但还没 normalize。
 
-先跑：
+先确认：
 
-```bash
-python scripts/run_rag_eval.py
-```
+- 已成功导入一条 source
+- 已执行 `/api/knowledge/normalize`
+- 已生成 knowledge 和 chunk
 
 ### 为什么没有 citations
 
@@ -192,3 +181,8 @@ python scripts/run_rag_eval.py
 2. 那如果还是失败呢
 
 只要带同一个 `session_id`，系统就会把上文一起考虑。
+
+## 补充说明
+
+- `scripts/run_rag_eval.py` 是可选验证脚本，不是启动项，也不是必经步骤
+- 如果你只是想使用系统本身，优先走“导入 source -> normalize -> 查询”这条主链

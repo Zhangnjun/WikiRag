@@ -78,8 +78,7 @@ export HUAWEI_WIKI_COOKIE='你的真实 cookie'
 
 说明：
 
-- 如果不配 Cookie，演示数据和本地 RAG 仍可跑
-- 但真实 Huawei Wiki 搜索和导入大概率会失败
+- 如果不配 Cookie，真实 Huawei Wiki 搜索和导入大概率会失败
 
 ### 5. 启动服务
 
@@ -102,7 +101,7 @@ uvicorn app.main:app --reload
 
 ## 三、先做最小保底验证
 
-这一步的目的不是验证真实 Wiki，而是确保系统基础链路没有坏。
+这一步的目的不是依赖演示数据，而是先确认服务和接口本身正常。
 
 ### 1. 健康检查
 
@@ -118,27 +117,35 @@ curl "http://127.0.0.1:8000/api/health" \
 {"status":"ok"}
 ```
 
-### 2. 跑演示数据
+### 2. 建议先手工导入一条最小 source
 
 ```bash
-python scripts/run_rag_eval.py
+curl -X POST "http://127.0.0.1:8000/api/source/import" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: change-me" \
+  -d '{
+    "source_title":"最小验证文档",
+    "source_type":"manual",
+    "source_url":"https://wiki.huawei.com/domains/156/wiki/4198/WIKI2026040410674038",
+    "raw_content":"配置项变更前需要确认审批、灰度范围、生效范围和权限要求。发布后如果出现异常，应按回滚规则恢复。",
+    "owner":"待补充",
+    "tags":["最小验证","配置","回滚"]
+  }' | tee validation_outputs/min_source_import.json
 ```
 
-这一步会自动：
+再执行 normalize：
 
-- 导入演示 source
-- 生成 knowledge
-- 自动 chunk
-- 自动 embedding
-- 跑 10 条评测样例
-- 生成报告
+```bash
+curl -X POST "http://127.0.0.1:8000/api/knowledge/normalize" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: change-me" \
+  -d '{
+    "source_id":"替换成上一步返回的 source_id",
+    "use_ai":false
+  }' | tee validation_outputs/min_knowledge_normalize.json
+```
 
-输出位置：
-
-- `outputs/rag_eval_report.md`
-- `outputs/rag_eval_report.json`
-
-如果这一步都失败，不要急着测真实 Wiki，先修基础环境。
+如果这条最小链路都失败，不要急着测真实 Wiki，先修基础环境。
 
 ### 3. 建议在 webShell 里保存关键验证结果
 

@@ -65,13 +65,7 @@ uvicorn app.main:app --reload
 - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - Health: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
 
-3. 如果数据库里还没有数据，先执行：
-
-```bash
-python scripts/run_rag_eval.py
-```
-
-这一步会自动导入演示数据、做 normalize、切 chunk、生成 embedding，并输出评测报告。
+3. 如果数据库里还没有数据，先手工导入一条 source，或者直接联通 Huawei Wiki 搜索与导入接口。
 
 默认 API Key 来自 [`config.yaml`](/Users/sheldonzhao/Desktop/github/findInteresting/WikiRag/config.yaml) 中的 `app.api_key`，请求时放到 `X-API-Key` 头里。
 
@@ -255,12 +249,7 @@ curl -X POST "http://127.0.0.1:8000/api/rag/query" \
 ## 最小验证流程
 
 1. 启动服务
-2. 执行：
-
-```bash
-python scripts/run_rag_eval.py
-```
-
+2. 先导入一条 source，或通过 Wiki 搜索接口找到候选文档并导入
 3. 打开：
 
 - [http://127.0.0.1:8000/rag-debug](http://127.0.0.1:8000/rag-debug)
@@ -286,7 +275,7 @@ python scripts/run_rag_eval.py
 `没有返回 chunk 怎么办`
 
 - 先确认是否已经导入 source 并执行 normalize
-- 或者直接先跑 `python scripts/run_rag_eval.py`
+- 再确认 normalize 后已经生成 knowledge 文档和 chunk
 
 `没有 citations 怎么办`
 
@@ -334,3 +323,4 @@ python scripts/run_rag_eval.py
   - 切分 chunk
   - 生成 embedding
   - 进入 hybrid retrieval 可检索状态
+- `scripts/run_rag_eval.py` 属于可选验证脚本，不是项目运行前置条件
