@@ -49,6 +49,8 @@ class WikiRecommendItemResponse(WikiSearchItemResponse):
     query_used: str = ""
     skill_feasibility: str = ""
     skill_reason: str = ""
+    project_fit: str = ""
+    project_evidence: List[str] = Field(default_factory=list)
 
 
 class WikiRecommendResponse(BaseModel):

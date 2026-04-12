@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from app.api.deps import require_api_key
 from app.core.exceptions import AppError
 from app.dependencies import (
+    get_expert_profile_service,
     get_internal_ai_client,
     get_internal_embedding_client,
     get_knowledge_service,
@@ -20,6 +21,7 @@ from app.dependencies import (
     get_wiki_recommend_service,
     get_wiki_service,
 )
+from app.schemas.expert_profile import ExpertProfilePreviewRequest, ExpertProfilePreviewResponse
 from app.schemas.common import DeleteResponse, HealthResponse, MessageResponse
 from app.schemas.knowledge import (
     KnowledgeDocumentResponse,
@@ -51,6 +53,11 @@ router = APIRouter(dependencies=[Depends(require_api_key)])
 public_router = APIRouter()
 
 
+def _read_static_html(filename: str) -> str:
+    html_path = Path(__file__).resolve().parents[1] / "static" / filename
+    return html_path.read_text(encoding="utf-8")
+
+
 def _source_to_response(source) -> SourceRecordResponse:
     return SourceRecordResponse(**source.__dict__)
 
@@ -66,8 +73,32 @@ def root_redirect() -> RedirectResponse:
 
 @public_router.get("/rag-debug", response_class=HTMLResponse, include_in_schema=False)
 def rag_debug_page() -> HTMLResponse:
-    html_path = Path(__file__).resolve().parents[1] / "static" / "rag_debug.html"
-    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    return HTMLResponse(_read_static_html("rag_debug.html"))
+
+
+@public_router.get("/ops-workbench", response_class=HTMLResponse, include_in_schema=False)
+def ops_workbench_page() -> HTMLResponse:
+    return HTMLResponse(_read_static_html("ops_workbench.html"))
+
+
+@public_router.get("/ops-rag-query", response_class=HTMLResponse, include_in_schema=False)
+def ops_rag_query_page() -> HTMLResponse:
+    return HTMLResponse(_read_static_html("ops_rag_query.html"))
+
+
+@public_router.get("/ops-wiki-ingest", response_class=HTMLResponse, include_in_schema=False)
+def ops_wiki_ingest_page() -> HTMLResponse:
+    return HTMLResponse(_read_static_html("ops_wiki_ingest.html"))
+
+
+@public_router.get("/ops-skill-profile", response_class=HTMLResponse, include_in_schema=False)
+def ops_skill_profile_page() -> HTMLResponse:
+    return HTMLResponse(_read_static_html("ops_skill_profile.html"))
+
+
+@public_router.get("/career-workbench", response_class=HTMLResponse, include_in_schema=False)
+def career_workbench_page() -> HTMLResponse:
+    return HTMLResponse(_read_static_html("career_workbench.html"))
 
 
 @router.get("/api/health", response_model=HealthResponse)
@@ -158,6 +189,7 @@ def wiki_recommend(request: WikiRecommendRequest) -> WikiRecommendResponse:
         page_size=request.page_size,
         max_queries=request.max_queries,
         cookie_override=request.cookie,
+        trace_id=new_trace_id(),
     )
     return WikiRecommendResponse(**payload)
 
@@ -175,6 +207,15 @@ def wiki_recommend_expanded(request: WikiRecommendExpandedRequest) -> WikiRecomm
         trace_id=new_trace_id(),
     )
     return WikiRecommendExpandedResponse(**payload)
+
+
+@router.post("/api/expert/profile/preview", response_model=ExpertProfilePreviewResponse)
+def expert_profile_preview(request: ExpertProfilePreviewRequest) -> ExpertProfilePreviewResponse:
+    payload = get_expert_profile_service().preview_scan(
+        person_name=request.person_name,
+        focus_topics=request.focus_topics,
+    )
+    return ExpertProfilePreviewResponse(**payload)
 
 
 @router.post("/api/wiki/recommend/expanded/export", include_in_schema=True)

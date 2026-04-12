@@ -61,7 +61,12 @@ uvicorn app.main:app --reload
 
 2. 打开页面：
 
-- RAG Debug UI: [http://127.0.0.1:8000/rag-debug](http://127.0.0.1:8000/rag-debug)
+- Workspace Entry: [http://127.0.0.1:8000/rag-debug](http://127.0.0.1:8000/rag-debug)
+- Ops Workbench: [http://127.0.0.1:8000/ops-workbench](http://127.0.0.1:8000/ops-workbench)
+- Ops Wiki Ingest: [http://127.0.0.1:8000/ops-wiki-ingest](http://127.0.0.1:8000/ops-wiki-ingest)
+- Ops RAG Query: [http://127.0.0.1:8000/ops-rag-query](http://127.0.0.1:8000/ops-rag-query)
+- Ops Skill Profile: [http://127.0.0.1:8000/ops-skill-profile](http://127.0.0.1:8000/ops-skill-profile)
+- Career Workbench: [http://127.0.0.1:8000/career-workbench](http://127.0.0.1:8000/career-workbench)
 - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - Health: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
 
@@ -212,39 +217,39 @@ curl -X POST "http://127.0.0.1:8000/api/rag/query" \
   }'
 ```
 
-## RAG 调试页面使用说明
+## 页面结构说明
 
-调试页地址：
+当前页面不再是一个大而杂的调试页，而是双场景入口：
 
-- [http://127.0.0.1:8000/rag-debug](http://127.0.0.1:8000/rag-debug)
+- `/rag-debug`
+  - 统一入口页
+- `/ops-workbench`
+  - 运维工作台二级入口
+  - 里面再拆成：
+    - `/ops-wiki-ingest`
+    - `/ops-rag-query`
+    - `/ops-skill-profile`
+- `/career-workbench`
+  - 个人搜索 / 求职细节提取工作台
 
-页面默认已经填好一组可直接提交的示例参数：
+推荐使用方式：
 
-- API Key: `change-me`
-- Query: `配置变更异常后怎么回滚`
-- Top K: `3`
-- Use AI: 关闭
-- Use Rerank: 开启
-- Debug: 开启
-- Doc Type: `配置与治理知识库`
+1. 如果你在做运维知识库建设：
+   - 先进入 `/ops-workbench`
+   - 再选择 `Wiki 抽取与入库` 或 `RAG 查询`
+2. 如果你在做个人求职方向的 Wiki 挖掘：
+   - 直接进入 `/career-workbench`
 
-页面区域说明：
+页面职责说明：
 
-- 查询输入区：填写 API Key、query、session_id、top_k、过滤条件和开关
-- 回答展示区：看 `answer`、`status`、`latency_ms`、`session_id`
-- 引用展示区：看 `doc_id/source_id/section_title/chunk 摘要`
-- 检索片段展示区：看最终返回的 chunk、score 和来源
-- Debug 信息区：看 `keyword_hits/vector_hits/final_hits/query_rewrite`
-- 错误提示区：接口报错会直接显示
-
-最简单的操作方式：
-
-1. 打开 `/rag-debug`
-2. 直接点“提交”
-3. 看 `answer`
-4. 看 `citations`
-5. 看 `retrieved_chunks`
-6. 看 `debug_info`
+- `ops-wiki-ingest`
+  - 负责远端 Huawei Wiki 搜索、候选选择、导入 Source、normalize 入库
+- `ops-rag-query`
+  - 只查本地已经入库的 knowledge / chunk，不直接请求远端 Wiki
+- `ops-skill-profile`
+  - 预留按人聚合 Wiki 和专家 Skill 画像预览
+- `career-workbench`
+  - 做求职增强型搜索、项目证据提取、推荐 Excel 导出
 
 ## 最小验证流程
 
@@ -252,7 +257,7 @@ curl -X POST "http://127.0.0.1:8000/api/rag/query" \
 2. 先导入一条 source，或通过 Wiki 搜索接口找到候选文档并导入
 3. 打开：
 
-- [http://127.0.0.1:8000/rag-debug](http://127.0.0.1:8000/rag-debug)
+- [http://127.0.0.1:8000/ops-workbench](http://127.0.0.1:8000/ops-workbench)
 
 4. 使用默认 query：
 

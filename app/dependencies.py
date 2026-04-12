@@ -13,6 +13,7 @@ from app.repositories.sqlite import SQLiteRepository
 from app.services.chunk_service import ChunkService
 from app.services.classifier import DocumentClassifier
 from app.services.embedding_service import EmbeddingService
+from app.services.expert_profile_service import ExpertProfileService
 from app.services.knowledge_service import KnowledgeService
 from app.services.normalize_service import KnowledgeNormalizeService
 from app.services.rag_service import RAGService
@@ -58,6 +59,11 @@ def get_wiki_service() -> WikiService:
 @lru_cache(maxsize=1)
 def get_wiki_recommend_service() -> WikiRecommendService:
     return WikiRecommendService(get_wiki_service(), get_classifier())
+
+
+@lru_cache(maxsize=1)
+def get_expert_profile_service() -> ExpertProfileService:
+    return ExpertProfileService(get_source_repository())
 
 
 @lru_cache(maxsize=1)

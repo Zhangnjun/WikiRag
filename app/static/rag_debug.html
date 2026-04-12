@@ -3,1203 +3,183 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WikiRag Debug Console</title>
+  <title>WikiRag 工作台入口</title>
   <style>
     :root {
-      --bg: #f3f4f6;
+      --bg: #f6f8fb;
       --panel: #ffffff;
-      --border: #d1d5db;
       --text: #111827;
       --muted: #6b7280;
-      --primary: #0f766e;
-      --primary-soft: #ccfbf1;
+      --border: #dbe2ea;
+      --primary: #14532d;
+      --primary-soft: #dcfce7;
       --accent: #1d4ed8;
       --accent-soft: #dbeafe;
-      --danger: #b91c1c;
-      --danger-soft: #fee2e2;
-      --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
     }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "PingFang SC", "Helvetica Neue", "Segoe UI", sans-serif;
+      font-family: "PingFang SC", "Segoe UI", sans-serif;
       color: var(--text);
       background:
-        radial-gradient(circle at top left, #d1fae5 0, transparent 32%),
-        radial-gradient(circle at top right, #dbeafe 0, transparent 28%),
+        radial-gradient(circle at top left, #dbeafe 0, transparent 32%),
+        radial-gradient(circle at top right, #dcfce7 0, transparent 28%),
         var(--bg);
     }
     .page {
-      max-width: 1440px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 28px 20px 40px;
+      padding: 40px 20px 60px;
     }
     .hero {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 38px;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 900px;
+    }
+    .meta {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge.primary {
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+    .badge.accent {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .grid {
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 18px;
-      margin-bottom: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
     }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 18px;
+      border-radius: 22px;
       box-shadow: var(--shadow);
-      padding: 18px;
+      padding: 22px;
     }
-    .hero-main h1 {
+    .card h2 {
       margin: 0 0 10px;
-      font-size: 34px;
-      line-height: 1.1;
+      font-size: 24px;
     }
-    .hero-main p {
-      margin: 0;
+    .card p {
       color: var(--muted);
-      line-height: 1.65;
-      font-size: 14px;
+      line-height: 1.7;
+      min-height: 72px;
     }
-    .badge-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-    .badge {
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: var(--primary-soft);
-      color: #115e59;
-      font-size: 12px;
-      font-weight: 700;
-    }
-    .meta-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 10px;
-      font-size: 13px;
-    }
-    .meta-list li {
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-    }
-    .meta-list strong {
-      display: block;
-      margin-bottom: 4px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1.02fr 0.98fr;
-      gap: 18px;
-    }
-    .section-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .section-title h2 {
-      margin: 0;
-      font-size: 22px;
-    }
-    .step {
-      margin-bottom: 18px;
-    }
-    .step-label {
-      margin: 0 0 10px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-    .form-grid.three {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .field label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .field small {
-      display: block;
-      color: var(--muted);
-      margin-top: 5px;
-      font-size: 12px;
-    }
-    input, textarea, select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #cbd5e1;
-      background: #fff;
+    .card ul {
+      margin: 0 0 18px;
+      padding-left: 18px;
       color: var(--text);
-      font-size: 14px;
+      line-height: 1.75;
     }
-    textarea {
-      min-height: 84px;
-      resize: vertical;
-    }
-    .toggle-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin: 12px 0;
-    }
-    .toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      color: var(--text);
-    }
-    .toggle input { width: auto; }
     .actions {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
-      margin-top: 14px;
     }
-    button {
-      border: 0;
-      border-radius: 999px;
+    a.button {
+      display: inline-block;
+      text-decoration: none;
       padding: 10px 16px;
-      font-size: 14px;
+      border-radius: 999px;
       font-weight: 700;
-      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    a.button.primary {
       background: var(--accent);
       color: #fff;
     }
-    button.secondary {
-      background: #475569;
+    a.button.secondary {
+      background: #eef2ff;
+      color: #3730a3;
     }
-    button.light {
-      background: #e5e7eb;
-      color: #111827;
-    }
-    button.ghost {
-      background: var(--accent-soft);
-      color: #1d4ed8;
-    }
-    .status-bar {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-    .status-box {
-      padding: 12px;
-      border-radius: 14px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-    }
-    .status-box strong {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-    .status-pill {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 800;
-    }
-    .stack {
-      display: grid;
-      gap: 14px;
-    }
-    .list {
-      display: grid;
-      gap: 10px;
-    }
-    .item {
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 14px;
-      background: #fff;
-    }
-    .item.selected {
-      border-color: var(--accent);
-      box-shadow: inset 0 0 0 1px var(--accent);
-      background: #f8fbff;
-    }
-    .item h3, .item h4 {
-      margin: 0 0 8px;
-      font-size: 16px;
-    }
-    .muted {
-      color: var(--muted);
-    }
-    .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-    .empty {
-      padding: 16px;
-      border: 1px dashed #cbd5e1;
-      border-radius: 14px;
-      color: var(--muted);
-      background: #f8fafc;
-      font-style: italic;
-    }
-    .notice {
-      padding: 14px;
-      border-radius: 14px;
+    .footer {
+      margin-top: 20px;
       font-size: 13px;
-      line-height: 1.6;
-      border: 1px solid transparent;
+      color: var(--muted);
     }
-    .notice.info {
-      background: #ecfeff;
-      border-color: #a5f3fc;
-      color: #155e75;
-    }
-    .notice.error {
-      background: var(--danger-soft);
-      border-color: #fca5a5;
-      color: var(--danger);
-      display: none;
-    }
-    .inline-meta {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .inline-chip {
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: #f3f4f6;
-      font-size: 12px;
-      color: #374151;
-    }
-    .result-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
-      margin-bottom: 10px;
-    }
-    .result-head .title-block {
-      flex: 1;
-    }
-    .debug-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    .subcard {
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 14px;
-      background: #f8fafc;
-    }
-    .subcard h3 {
-      margin: 0 0 10px;
-      font-size: 15px;
-    }
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    a:hover { text-decoration: underline; }
-    @media (max-width: 1080px) {
-      .hero, .grid, .debug-grid, .form-grid, .form-grid.three, .status-bar {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 30px; }
     }
   </style>
 </head>
 <body>
   <div class="page">
-    <div class="hero">
-      <div class="card hero-main">
-        <div class="badge-row">
-          <span class="badge">Huawei Wiki Search</span>
-          <span class="badge">Huawei Wiki getWiki Detail</span>
-          <span class="badge">Normalize + RAG</span>
-        </div>
-        <h1>WikiRag 调试台</h1>
-        <p>
-          这个页面按真实链路调试：先搜 Wiki，再导入 source，再做 normalize，最后发起 RAG 查询。
-          页面不是直接调用 Huawei Wiki，而是调用你自己的后端接口；后端导入 Wiki 时会在
-          <span class="mono">/api/source/import</span> 里触发
-          <span class="mono">https://wiki.huawei.com/devops-knowledge-management/api/getWiki</span>。
-        </p>
+    <section class="hero">
+      <h1>WikiRag 双场景工作台</h1>
+      <p>
+        当前版本把能力拆成两个入口：一个服务运维助手方向的知识库构建与 RAG 调试，一个服务个人求职方向的定向搜索与业务细节提炼。
+        `/rag-debug` 现在作为统一入口，避免把所有流程继续堆在一个页面里。
+      </p>
+      <div class="meta">
+        <span class="badge primary">Huawei Wiki 接口接入</span>
+        <span class="badge accent">双界面结构</span>
+        <span class="badge primary">Skill 画像预留</span>
       </div>
-      <div class="card">
-        <ul class="meta-list">
-          <li>
-            <strong>当前链路</strong>
-            <span class="mono">/api/wiki/search -> /api/source/import(fetch_from_wiki=true) -> getWiki -> /api/knowledge/normalize -> /api/rag/query</span>
-          </li>
-          <li>
-            <strong>你要确认的点</strong>
-            是否能搜到 Wiki、是否能导入正文、是否真的拿到 <span class="mono">raw_html/rendered_text</span>、是否能进入 RAG 命中。
-          </li>
-          <li>
-            <strong>API Key</strong>
-            当前页面所有请求都会带 <span class="mono">X-API-Key</span>。
-          </li>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>运维知识库 / RAG 工作台</h2>
+        <p>面向内部运维助手和知识库建设场景，重点是搜 Wiki、导入 source、规范化入库、RAG 查询与链路调试。</p>
+        <ul>
+          <li>搜索并导入 Huawei Wiki</li>
+          <li>构建 knowledge / chunk / embedding</li>
+          <li>发起 RAG 查询并查看引用</li>
+          <li>验证运维知识沉淀链路</li>
         </ul>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="stack">
-        <div class="card">
-          <div class="section-title">
-            <h2>步骤 1：全局参数</h2>
-          </div>
-          <div class="form-grid">
-            <div class="field">
-              <label for="apiKey">X-API-Key</label>
-              <input id="apiKey" />
-            </div>
-            <div class="field">
-              <label for="sessionId">session_id</label>
-              <input id="sessionId" placeholder="多轮对话可复用，不填则自动生成" />
-            </div>
-          </div>
-          <div class="form-grid" style="margin-top: 12px;">
-            <div class="field">
-              <label for="wikiCookie">Wiki Cookie</label>
-              <textarea id="wikiCookie" placeholder="可选。Cookie 过期时可直接粘贴新的值，页面请求会覆盖默认配置。"></textarea>
-              <small>只用于本次页面请求，不会自动持久化到后端配置。</small>
-            </div>
-            <div class="field">
-              <label for="profileText">个人背景 / 简历关键词</label>
-              <textarea id="profileText" placeholder="例如：平台研发、skill 接入、联调、配置治理、运维排障"></textarea>
-              <small>用于“推荐值得阅读的 Wiki”。</small>
-            </div>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="fillExampleBtn">填充示例</button>
-            <button class="light" id="copyRagBtn">复制当前 RAG 请求 JSON</button>
-          </div>
+        <div class="actions">
+          <a class="button primary" href="/ops-workbench">进入运维工作台</a>
+          <a class="button secondary" href="/docs">查看接口文档</a>
         </div>
+      </article>
 
-        <div class="card">
-          <div class="section-title">
-            <h2>步骤 2：Wiki 搜索与导入</h2>
-          </div>
-          <div class="notice info">
-            如果你的目标是“根据个人背景推荐值得阅读的 Wiki”，先点击下面的“生成推荐 Wiki”，再从推荐结果里选中条目导入。
-          </div>
-          <div class="form-grid" style="margin-top: 14px;">
-            <div class="field">
-              <label for="focusTopics">focus_topics</label>
-              <input id="focusTopics" placeholder="用逗号分隔，例如：配置回滚,skill 接入,排障" />
-            </div>
-            <div class="field">
-              <label for="maxQueries">recommend max_queries</label>
-              <input id="maxQueries" type="number" min="1" value="5" />
-            </div>
-          </div>
-          <div class="form-grid three" style="margin-top: 12px;">
-            <div class="field">
-              <label for="recommendPageSize">recommend page_size</label>
-              <input id="recommendPageSize" type="number" min="1" value="8" />
-            </div>
-            <div class="field">
-              <label for="pagesPerQuery">pages_per_query</label>
-              <input id="pagesPerQuery" type="number" min="1" value="2" />
-            </div>
-            <div class="field">
-              <label for="minScore">min_score</label>
-              <input id="minScore" type="number" min="0" step="0.5" value="2.5" />
-            </div>
-          </div>
-          <div class="actions">
-            <button id="recommendWikiBtn">生成推荐 Wiki</button>
-            <button class="secondary" id="recommendExpandedBtn">扩大推荐范围</button>
-            <button class="light" id="exportRecommendBtn">导出推荐 Excel</button>
-            <button class="ghost" id="copyRecommendBtn">复制推荐请求 JSON</button>
-          </div>
-          <div id="recommendInfo" class="notice info" style="margin-top: 14px;">
-            推荐接口会根据你的背景文本抽关键词、生成搜索词，并聚合 Huawei Wiki 搜索结果。它不会自动导入。
-          </div>
-          <div id="recommendResults" class="list" style="margin-top: 14px;"></div>
-          <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 18px 0;">
-          <p class="step-label">先搜，再选，再导入。导入动作会触发后端调用 getWiki 详情接口。</p>
-          <div class="form-grid">
-            <div class="field">
-              <label for="wikiQuery">wiki 搜索词</label>
-              <input id="wikiQuery" placeholder="例如：配置回滚 / skill 接入 / 告警排查" />
-            </div>
-            <div class="field">
-              <label for="wikiOwner">导入 owner</label>
-              <input id="wikiOwner" placeholder="例如：平台研发组" />
-            </div>
-          </div>
-          <div class="form-grid three">
-            <div class="field">
-              <label for="wikiPage">page</label>
-              <input id="wikiPage" type="number" min="1" value="1" />
-            </div>
-            <div class="field">
-              <label for="wikiPageSize">page_size</label>
-              <input id="wikiPageSize" type="number" min="1" value="5" />
-            </div>
-            <div class="field">
-              <label for="wikiTags">导入 tags</label>
-              <input id="wikiTags" placeholder="用逗号分隔，例如：wiki,验证,回滚" />
-            </div>
-          </div>
-          <div class="actions">
-            <button id="searchWikiBtn">搜索 Wiki</button>
-            <button class="ghost" id="copyWikiSearchBtn">复制搜索请求 JSON</button>
-          </div>
-          <div id="wikiSearchInfo" class="notice info" style="margin-top: 14px;">
-            选中某条结果后，点击“导入选中 Wiki”即可。导入使用 <span class="mono">fetch_from_wiki=true</span>，后端会调用 <span class="mono">getWiki</span>。
-          </div>
-          <div id="wikiResults" class="list" style="margin-top: 14px;"></div>
-          <div class="actions">
-            <button id="importWikiBtn">导入选中 Wiki</button>
-          </div>
+      <article class="card">
+        <h2>个人搜索 / 求职细节提取工作台</h2>
+        <p>面向个人背景增强和项目补充场景，重点是根据简历与目标方向扩展关键词，挖出适合写进项目经验的真实业务证据。</p>
+        <ul>
+          <li>输入简历背景和目标方向</li>
+          <li>自动扩展 RAG / Agent / 微调 / 推理等相关词</li>
+          <li>输出推荐 Wiki、项目证据和 skill 可行性</li>
+          <li>支持导出推荐 Excel</li>
+        </ul>
+        <div class="actions">
+          <a class="button primary" href="/career-workbench">进入个人搜索工作台</a>
+          <a class="button secondary" href="/api/health">健康检查</a>
         </div>
+      </article>
+    </section>
 
-        <div class="card">
-          <div class="section-title">
-            <h2>步骤 3：规范化与 RAG 查询</h2>
-          </div>
-          <div class="notice info">
-            如果你已经通过上一步导入了 source，可以直接点击“规范化当前 source”。规范化完成后，再发起 RAG 查询。
-          </div>
-          <div class="actions" style="margin-top: 14px;">
-            <button id="normalizeBtn">规范化当前 source</button>
-          </div>
-          <div class="form-grid" style="margin-top: 16px;">
-            <div class="field">
-              <label for="ragQuery">query</label>
-              <textarea id="ragQuery"></textarea>
-            </div>
-            <div class="field">
-              <label for="docType">doc_type</label>
-              <input id="docType" placeholder="例如：配置与治理知识库" />
-              <small>可用于限制检索范围。</small>
-            </div>
-          </div>
-          <div class="form-grid three">
-            <div class="field">
-              <label for="topK">top_k</label>
-              <select id="topK">
-                <option value="3">3</option>
-                <option value="5">5</option>
-                <option value="8">8</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="sourceType">source_type</label>
-              <input id="sourceType" placeholder="例如：wiki_api" />
-            </div>
-            <div class="field">
-              <label for="productLine">product_line</label>
-              <input id="productLine" placeholder="可选" />
-            </div>
-          </div>
-          <div class="toggle-row">
-            <label class="toggle"><input type="checkbox" id="useAi" /> use_ai</label>
-            <label class="toggle"><input type="checkbox" id="useRerank" checked /> use_rerank</label>
-            <label class="toggle"><input type="checkbox" id="debug" checked /> debug</label>
-          </div>
-          <div class="actions">
-            <button id="ragQueryBtn">发起 RAG 查询</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="stack">
-        <div class="card">
-          <div class="section-title">
-            <h2>当前状态</h2>
-          </div>
-          <div class="status-bar">
-            <div class="status-box">
-              <strong>Wiki 选中</strong>
-              <div id="selectedWikiMeta" class="mono">未选择</div>
-            </div>
-            <div class="status-box">
-              <strong>当前 Source</strong>
-              <div id="selectedSourceMeta" class="mono">未导入</div>
-            </div>
-            <div class="status-box">
-              <strong>当前 Knowledge</strong>
-              <div id="selectedDocMeta" class="mono">未规范化</div>
-            </div>
-            <div class="status-box">
-              <strong>RAG 状态</strong>
-              <div id="ragStatus" class="status-pill">waiting</div>
-            </div>
-          </div>
-          <div id="errorBox" class="notice error"></div>
-        </div>
-
-        <div class="card">
-          <div class="section-title">
-            <h2>导入结果</h2>
-          </div>
-          <div id="importSummary" class="empty">导入成功后，这里会显示 source_id、external_id、source_url、正文摘要。</div>
-        </div>
-
-        <div class="card">
-          <div class="section-title">
-            <h2>规范化结果</h2>
-          </div>
-          <div id="normalizeSummary" class="empty">normalize 成功后，这里会显示 doc_id、doc_type、summary 和 markdown 摘要。</div>
-        </div>
-
-        <div class="card">
-          <div class="section-title">
-            <h2>RAG 结果</h2>
-          </div>
-          <div class="status-bar">
-            <div class="status-box">
-              <strong>status</strong>
-              <div id="ragStatusText" class="mono">-</div>
-            </div>
-            <div class="status-box">
-              <strong>latency</strong>
-              <div id="ragLatency" class="mono">-</div>
-            </div>
-            <div class="status-box">
-              <strong>session_id</strong>
-              <div id="ragSessionId" class="mono">-</div>
-            </div>
-            <div class="status-box">
-              <strong>命中数</strong>
-              <div id="ragHitCount" class="mono">0</div>
-            </div>
-          </div>
-          <div class="subcard">
-            <h3>answer</h3>
-            <div id="ragAnswer" class="mono empty">提交 RAG 查询后显示。</div>
-          </div>
-          <div class="subcard" style="margin-top: 12px;">
-            <h3>citations</h3>
-            <div id="citations" class="empty">暂无引用</div>
-          </div>
-          <div class="subcard" style="margin-top: 12px;">
-            <h3>retrieved_chunks</h3>
-            <div id="retrievedChunks" class="empty">暂无检索片段</div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section-title">
-            <h2>Debug 信息</h2>
-          </div>
-          <div class="debug-grid">
-            <div class="subcard">
-              <h3>query_rewrite</h3>
-              <div id="queryRewrite" class="mono empty">暂无</div>
-            </div>
-            <div class="subcard">
-              <h3>final_hits</h3>
-              <div id="finalHits" class="empty">暂无</div>
-            </div>
-            <div class="subcard">
-              <h3>keyword_hits</h3>
-              <div id="keywordHits" class="empty">暂无</div>
-            </div>
-            <div class="subcard">
-              <h3>vector_hits</h3>
-              <div id="vectorHits" class="empty">暂无</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="footer">
+      后续“按人扫描 Wiki -> 生成人员 Skill 画像”会作为独立能力继续扩展，不再挤进当前推荐页面。
     </div>
   </div>
-
-  <script>
-    const state = {
-      selectedWiki: null,
-      currentSource: null,
-      currentDocument: null,
-      recommendResults: [],
-      recommendMeta: { queryCandidates: [], detectedDocType: "" }
-    };
-
-    const example = {
-      apiKey: "change-me",
-      wikiQuery: "配置回滚",
-      wikiOwner: "平台研发组",
-      wikiTags: "wiki,验证,配置回滚",
-      wikiCookie: "",
-      profileText: "平台研发，关注 skill 接入、联调、配置治理、告警排查和回滚处理。",
-      focusTopics: "配置回滚,skill 接入,告警排查",
-      maxQueries: 5,
-      recommendPageSize: 8,
-      pagesPerQuery: 2,
-      minScore: 2.5,
-      page: 1,
-      pageSize: 5,
-      ragQuery: "配置变更异常后怎么回滚",
-      docType: "配置与治理知识库",
-      sourceType: "wiki_api",
-      productLine: "",
-      topK: "3",
-      useAi: false,
-      useRerank: true,
-      debug: true,
-      sessionId: ""
-    };
-
-    function $(id) {
-      return document.getElementById(id);
-    }
-
-    function escapeHtml(value) {
-      return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    }
-
-    function showError(message) {
-      const box = $("errorBox");
-      box.style.display = "block";
-      box.textContent = message;
-    }
-
-    function clearError() {
-      const box = $("errorBox");
-      box.style.display = "none";
-      box.textContent = "";
-    }
-
-    function renderEmpty(id, text) {
-      $(id).innerHTML = `<div class="empty">${escapeHtml(text)}</div>`;
-    }
-
-    function fillExample() {
-      $("apiKey").value = example.apiKey;
-      $("wikiQuery").value = example.wikiQuery;
-      $("wikiOwner").value = example.wikiOwner;
-      $("wikiTags").value = example.wikiTags;
-      $("wikiCookie").value = example.wikiCookie;
-      $("profileText").value = example.profileText;
-      $("focusTopics").value = example.focusTopics;
-      $("maxQueries").value = example.maxQueries;
-      $("recommendPageSize").value = example.recommendPageSize;
-      $("pagesPerQuery").value = example.pagesPerQuery;
-      $("minScore").value = example.minScore;
-      $("wikiPage").value = example.page;
-      $("wikiPageSize").value = example.pageSize;
-      $("ragQuery").value = example.ragQuery;
-      $("docType").value = example.docType;
-      $("sourceType").value = example.sourceType;
-      $("productLine").value = example.productLine;
-      $("topK").value = example.topK;
-      $("useAi").checked = example.useAi;
-      $("useRerank").checked = example.useRerank;
-      $("debug").checked = example.debug;
-      $("sessionId").value = example.sessionId;
-    }
-
-    function getApiKey() {
-      return $("apiKey").value.trim();
-    }
-
-    function getWikiCookie() {
-      return $("wikiCookie").value.trim() || null;
-    }
-
-    async function apiFetch(url, payload, method = "POST") {
-      clearError();
-      const options = {
-        method,
-        headers: {
-          "X-API-Key": getApiKey()
-        }
-      };
-      if (payload !== null) {
-        options.headers["Content-Type"] = "application/json";
-        options.body = JSON.stringify(payload);
-      }
-      const response = await fetch(url, options);
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(body.message || JSON.stringify(body, null, 2) || `HTTP ${response.status}`);
-      }
-      return body;
-    }
-
-    async function apiDownload(url, payload, filenamePrefix) {
-      clearError();
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "X-API-Key": getApiKey(),
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.message || JSON.stringify(body, null, 2) || `HTTP ${response.status}`);
-      }
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `${filenamePrefix}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    }
-
-    function buildWikiSearchPayload() {
-      return {
-        search_query: $("wikiQuery").value.trim(),
-        page: Number($("wikiPage").value || 1),
-        page_size: Number($("wikiPageSize").value || 5),
-        cookie: getWikiCookie()
-      };
-    }
-
-    function buildRecommendPayload() {
-      return {
-        profile_text: $("profileText").value.trim(),
-        focus_topics: $("focusTopics").value.split(",").map((item) => item.trim()).filter(Boolean),
-        page_size: Number($("wikiPageSize").value || 5),
-        max_queries: Number($("maxQueries").value || 5),
-        cookie: getWikiCookie()
-      };
-    }
-
-    function buildExpandedRecommendPayload() {
-      return {
-        profile_text: $("profileText").value.trim(),
-        focus_topics: $("focusTopics").value.split(",").map((item) => item.trim()).filter(Boolean),
-        page_size: Number($("recommendPageSize").value || 8),
-        max_queries: Number($("maxQueries").value || 5),
-        pages_per_query: Number($("pagesPerQuery").value || 2),
-        min_score: Number($("minScore").value || 2.5),
-        cookie: getWikiCookie()
-      };
-    }
-
-    function buildImportPayload() {
-      if (!state.selectedWiki) {
-        throw new Error("请先从 Wiki 搜索结果里选中一条记录");
-      }
-      return {
-        source_type: "wiki_api",
-        fetch_from_wiki: true,
-        wiki_sn: state.selectedWiki.sn,
-        domain_id: state.selectedWiki.domain_id,
-        kanban_id: state.selectedWiki.kanban_id,
-        owner: $("wikiOwner").value.trim() || "待补充",
-        tags: $("wikiTags").value.split(",").map((item) => item.trim()).filter(Boolean),
-        skip_if_exists: true,
-        overwrite_if_exists: false,
-        cookie: getWikiCookie()
-      };
-    }
-
-    function buildNormalizePayload() {
-      if (!state.currentSource) {
-        throw new Error("请先导入 source");
-      }
-      return {
-        source_id: state.currentSource.source_id,
-        use_ai: $("useAi").checked,
-        doc_type: $("docType").value.trim() || null
-      };
-    }
-
-    function buildRagPayload() {
-      return {
-        query: $("ragQuery").value.trim(),
-        session_id: $("sessionId").value.trim() || null,
-        top_k: Number($("topK").value || 3),
-        use_ai: $("useAi").checked,
-        use_rerank: $("useRerank").checked,
-        debug: $("debug").checked,
-        filters: {
-          doc_type: $("docType").value.trim() || null,
-          source_type: $("sourceType").value.trim() || null,
-          product_line: $("productLine").value.trim() || null,
-          source_id: state.currentSource ? state.currentSource.source_id : null
-        }
-      };
-    }
-
-    function renderWikiResults(items) {
-      if (!items || !items.length) {
-        renderEmpty("wikiResults", "未搜到 Wiki 结果");
-        return;
-      }
-      $("wikiResults").innerHTML = items.map((item, index) => `
-        <div class="item ${state.selectedWiki && state.selectedWiki.sn === item.sn ? "selected" : ""}" data-wiki-index="${index}">
-          <div class="result-head">
-            <div class="title-block">
-              <h3>${escapeHtml(item.title || "未命名 Wiki")}</h3>
-              <div class="inline-meta">
-                <span class="inline-chip">sn: ${escapeHtml(item.sn)}</span>
-                <span class="inline-chip">domain_id: ${escapeHtml(item.domain_id)}</span>
-                <span class="inline-chip">kanban_id: ${escapeHtml(item.kanban_id)}</span>
-              </div>
-            </div>
-            <button class="ghost" onclick="selectWiki(${index})">选中</button>
-          </div>
-          <div class="muted">${escapeHtml(item.summary || "无摘要")}</div>
-          <div class="mono" style="margin-top: 8px;">${escapeHtml(item.url || "")}</div>
-        </div>
-      `).join("");
-      window.__wikiResults = items;
-    }
-
-    function renderRecommendResults(items, queryCandidates, detectedDocType) {
-      if (!items || !items.length) {
-        renderEmpty("recommendResults", "暂无推荐结果");
-        return;
-      }
-      $("recommendInfo").innerHTML = `
-        检测到的文档偏好类型：<span class="mono">${escapeHtml(detectedDocType || "待补充")}</span><br>
-        生成的搜索词：<span class="mono">${escapeHtml((queryCandidates || []).join(" | "))}</span>
-      `;
-      state.recommendMeta = {
-        queryCandidates: queryCandidates || [],
-        detectedDocType: detectedDocType || ""
-      };
-      $("recommendResults").innerHTML = items.map((item, index) => `
-        <div class="item ${state.selectedWiki && state.selectedWiki.sn === item.sn ? "selected" : ""}">
-          <div class="result-head">
-            <div class="title-block">
-              <h3>${escapeHtml(item.title || "未命名 Wiki")}</h3>
-              <div class="inline-meta">
-                <span class="inline-chip">score: ${escapeHtml(item.score)}</span>
-                <span class="inline-chip">query: ${escapeHtml(item.query_used)}</span>
-                <span class="inline-chip">skill: ${escapeHtml(item.skill_feasibility)}</span>
-              </div>
-            </div>
-            <button class="ghost" onclick="selectRecommendedWiki(${index})">选中</button>
-          </div>
-          <div class="muted">${escapeHtml(item.reason || "")}</div>
-          <div class="muted" style="margin-top: 6px;">匹配词：${escapeHtml((item.matched_terms || []).join("、") || "无")}</div>
-          <div class="muted" style="margin-top: 6px;">skill 可行性：${escapeHtml(item.skill_reason || "")}</div>
-          <div class="mono" style="margin-top: 8px;">${escapeHtml(item.url || "")}</div>
-        </div>
-      `).join("");
-      state.recommendResults = items;
-    }
-
-    function renderImportSummary(source) {
-      if (!source) {
-        renderEmpty("importSummary", "导入成功后，这里会显示 source 详情。");
-        return;
-      }
-      $("importSummary").innerHTML = `
-        <div class="item">
-          <div class="inline-meta">
-            <span class="inline-chip">source_id: ${escapeHtml(source.source_id)}</span>
-            <span class="inline-chip">external_id: ${escapeHtml(source.external_id)}</span>
-            <span class="inline-chip">import_status: ${escapeHtml(source.import_status)}</span>
-            <span class="inline-chip">normalize_status: ${escapeHtml(source.normalize_status)}</span>
-          </div>
-          <h3>${escapeHtml(source.source_title)}</h3>
-          <div class="mono">${escapeHtml(source.source_url)}</div>
-          <div class="muted" style="margin-top: 10px;">${escapeHtml((source.raw_content || "").slice(0, 600))}</div>
-          <div class="mono" style="margin-top: 10px;">metadata: ${escapeHtml(JSON.stringify(source.metadata || {}, null, 2))}</div>
-        </div>
-      `;
-    }
-
-    function renderNormalizeSummary(doc) {
-      if (!doc) {
-        renderEmpty("normalizeSummary", "normalize 成功后，这里会显示 knowledge 详情。");
-        return;
-      }
-      $("normalizeSummary").innerHTML = `
-        <div class="item">
-          <div class="inline-meta">
-            <span class="inline-chip">doc_id: ${escapeHtml(doc.doc_id)}</span>
-            <span class="inline-chip">doc_type: ${escapeHtml(doc.doc_type)}</span>
-            <span class="inline-chip">normalize_mode: ${escapeHtml(doc.normalize_mode)}</span>
-          </div>
-          <h3>${escapeHtml(doc.title)}</h3>
-          <div class="muted">${escapeHtml(doc.summary || "无摘要")}</div>
-          <div class="mono" style="margin-top: 10px;">${escapeHtml((doc.markdown_content || "").slice(0, 900))}</div>
-        </div>
-      `;
-    }
-
-    function renderCitations(items) {
-      if (!items || !items.length) {
-        renderEmpty("citations", "暂无引用");
-        return;
-      }
-      $("citations").innerHTML = items.map((item) => `
-        <div class="item">
-          <h4>${escapeHtml(item.doc_title)}</h4>
-          <div class="inline-meta">
-            <span class="inline-chip">doc_id: ${escapeHtml(item.doc_id)}</span>
-            <span class="inline-chip">source_id: ${escapeHtml(item.source_id)}</span>
-            <span class="inline-chip">chunk_id: ${escapeHtml(item.chunk_id)}</span>
-          </div>
-          <div class="muted">section: ${escapeHtml(item.section_title)}</div>
-          <div class="muted" style="margin-top: 8px;">${escapeHtml(item.chunk_summary)}</div>
-        </div>
-      `).join("");
-    }
-
-    function renderRetrievedChunks(items) {
-      if (!items || !items.length) {
-        renderEmpty("retrievedChunks", "暂无检索片段");
-        return;
-      }
-      $("retrievedChunks").innerHTML = items.map((item) => `
-        <div class="item">
-          <div class="result-head">
-            <div class="title-block">
-              <h4>${escapeHtml(item.section_title || "未命名章节")}</h4>
-              <div class="inline-meta">
-                <span class="inline-chip">chunk_id: ${escapeHtml(item.chunk_id)}</span>
-                <span class="inline-chip">doc_id: ${escapeHtml(item.doc_id)}</span>
-                <span class="inline-chip">score: ${escapeHtml(item.score)}</span>
-              </div>
-            </div>
-          </div>
-          <div class="muted">${escapeHtml((item.content || "").slice(0, 420))}</div>
-          <div class="mono" style="margin-top: 8px;">${escapeHtml(JSON.stringify(item.score_detail || {}, null, 2))}</div>
-        </div>
-      `).join("");
-    }
-
-    function renderDebugList(id, items, detailBuilder) {
-      if (!items || !items.length) {
-        renderEmpty(id, "暂无");
-        return;
-      }
-      $(id).innerHTML = items.map((item) => `
-        <div class="item">
-          ${detailBuilder(item)}
-        </div>
-      `).join("");
-    }
-
-    function refreshMeta() {
-      $("selectedWikiMeta").textContent = state.selectedWiki
-        ? `${state.selectedWiki.sn}\n${state.selectedWiki.title}`
-        : "未选择";
-      $("selectedSourceMeta").textContent = state.currentSource
-        ? `${state.currentSource.source_id}\n${state.currentSource.source_title}`
-        : "未导入";
-      $("selectedDocMeta").textContent = state.currentDocument
-        ? `${state.currentDocument.doc_id}\n${state.currentDocument.title}`
-        : "未规范化";
-    }
-
-    window.selectWiki = function selectWiki(index) {
-      state.selectedWiki = (window.__wikiResults || [])[index] || null;
-      renderWikiResults(window.__wikiResults || []);
-      refreshMeta();
-    };
-
-    window.selectRecommendedWiki = function selectRecommendedWiki(index) {
-      state.selectedWiki = state.recommendResults[index] || null;
-      renderRecommendResults(
-        state.recommendResults || [],
-        state.recommendMeta.queryCandidates || [],
-        state.recommendMeta.detectedDocType || ""
-      );
-      renderWikiResults(window.__wikiResults || []);
-      refreshMeta();
-    };
-
-    async function searchWiki() {
-      const payload = buildWikiSearchPayload();
-      if (!payload.search_query) {
-        showError("请先填写 wiki 搜索词");
-        return;
-      }
-      const body = await apiFetch("/api/wiki/search", payload);
-      state.selectedWiki = null;
-      renderWikiResults(body.items || []);
-      refreshMeta();
-    }
-
-    async function recommendWiki() {
-      const payload = buildRecommendPayload();
-      if (!payload.profile_text) {
-        showError("请先填写个人背景 / 简历关键词");
-        return;
-      }
-      const body = await apiFetch("/api/wiki/recommend", payload);
-      state.selectedWiki = null;
-      renderRecommendResults(body.items || [], body.query_candidates || [], body.detected_doc_type || "");
-      refreshMeta();
-    }
-
-    async function recommendWikiExpanded() {
-      const payload = buildExpandedRecommendPayload();
-      if (!payload.profile_text) {
-        showError("请先填写个人背景 / 简历关键词");
-        return;
-      }
-      const body = await apiFetch("/api/wiki/recommend/expanded", payload);
-      state.selectedWiki = null;
-      const summary = body.summary || {};
-      $("recommendInfo").innerHTML = `
-        检测到的文档偏好类型：<span class="mono">${escapeHtml(body.detected_doc_type || "待补充")}</span><br>
-        生成的搜索词：<span class="mono">${escapeHtml((body.query_candidates || []).join(" | "))}</span><br>
-        候选统计：<span class="mono">total=${escapeHtml(summary.total_candidates || 0)}, deduped=${escapeHtml(summary.deduped_candidates || 0)}, high=${escapeHtml(summary.high_relevance || 0)}, medium=${escapeHtml(summary.medium_relevance || 0)}, low=${escapeHtml(summary.low_relevance || 0)}</span>
-      `;
-      renderRecommendResults(body.items || [], body.query_candidates || [], body.detected_doc_type || "");
-      refreshMeta();
-    }
-
-    async function importWiki() {
-      const body = await apiFetch("/api/source/import", buildImportPayload());
-      state.currentSource = body;
-      renderImportSummary(body);
-      refreshMeta();
-    }
-
-    async function normalizeSource() {
-      const body = await apiFetch("/api/knowledge/normalize", buildNormalizePayload());
-      state.currentDocument = body;
-      renderNormalizeSummary(body);
-      refreshMeta();
-    }
-
-    async function runRagQuery() {
-      const payload = buildRagPayload();
-      if (!payload.query) {
-        showError("请先填写 query");
-        return;
-      }
-      $("ragStatus").textContent = "loading";
-      const body = await apiFetch("/api/rag/query", payload);
-      $("ragStatus").textContent = body.status || "success";
-      $("ragStatusText").textContent = body.status || "-";
-      $("ragLatency").textContent = `${body.latency_ms || 0} ms`;
-      $("ragSessionId").textContent = body.session_id || "-";
-      $("ragHitCount").textContent = String((body.retrieved_chunks || []).length);
-      $("ragAnswer").textContent = body.answer || "";
-      $("sessionId").value = body.session_id || "";
-
-      renderCitations(body.citations || []);
-      renderRetrievedChunks(body.retrieved_chunks || []);
-
-      const debugInfo = body.debug_info || {};
-      $("queryRewrite").textContent = debugInfo.query_rewrite || "暂无";
-      renderDebugList("keywordHits", debugInfo.keyword_hits || [], (item) => `
-        <h4>${escapeHtml(item.section_title || "-")}</h4>
-        <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
-        <div class="mono">keyword_score: ${escapeHtml(item.keyword_score || 0)}</div>
-        <div class="mono">keyword_hits: ${escapeHtml(JSON.stringify(item.keyword_hits || []))}</div>
-        <div class="muted" style="margin-top: 8px;">${escapeHtml((item.content || "").slice(0, 220))}</div>
-      `);
-      renderDebugList("vectorHits", debugInfo.vector_hits || [], (item) => `
-        <h4>${escapeHtml(item.section_title || "-")}</h4>
-        <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
-        <div class="mono">vector_score: ${escapeHtml(item.vector_score || item.score || 0)}</div>
-        <div class="muted" style="margin-top: 8px;">${escapeHtml((item.content || "").slice(0, 220))}</div>
-      `);
-      renderDebugList("finalHits", debugInfo.final_hits || [], (item) => `
-        <h4>${escapeHtml(item.section_title || "-")}</h4>
-        <div class="mono">chunk_id: ${escapeHtml(item.chunk_id || "")}</div>
-        <div class="mono">score_detail: ${escapeHtml(JSON.stringify(item.score_detail || {}, null, 2))}</div>
-        <div class="muted" style="margin-top: 8px;">${escapeHtml((item.content || "").slice(0, 220))}</div>
-      `);
-    }
-
-    function copyJson(payload) {
-      navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-    }
-
-    $("fillExampleBtn").addEventListener("click", fillExample);
-    $("copyRagBtn").addEventListener("click", () => copyJson(buildRagPayload()));
-    $("copyWikiSearchBtn").addEventListener("click", () => copyJson(buildWikiSearchPayload()));
-    $("copyRecommendBtn").addEventListener("click", () => copyJson(buildRecommendPayload()));
-    $("exportRecommendBtn").addEventListener("click", async () => {
-      try {
-        const payload = buildExpandedRecommendPayload();
-        if (!payload.profile_text) {
-          showError("请先填写个人背景 / 简历关键词");
-          return;
-        }
-        await apiDownload("/api/wiki/recommend/expanded/export", payload, "wiki_recommendations");
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("recommendExpandedBtn").addEventListener("click", async () => {
-      try {
-        await recommendWikiExpanded();
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("recommendWikiBtn").addEventListener("click", async () => {
-      try {
-        await recommendWiki();
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("searchWikiBtn").addEventListener("click", async () => {
-      try {
-        await searchWiki();
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("importWikiBtn").addEventListener("click", async () => {
-      try {
-        await importWiki();
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("normalizeBtn").addEventListener("click", async () => {
-      try {
-        await normalizeSource();
-      } catch (error) {
-        showError(error.message || String(error));
-      }
-    });
-    $("ragQueryBtn").addEventListener("click", async () => {
-      try {
-        await runRagQuery();
-      } catch (error) {
-        $("ragStatus").textContent = "error";
-        showError(error.message || String(error));
-      }
-    });
-
-    fillExample();
-    renderEmpty("recommendResults", "填写个人背景后，先生成推荐 Wiki。");
-    renderEmpty("wikiResults", "先搜 Wiki，再选中要导入的条目。");
-    refreshMeta();
-  </script>
 </body>
 </html>

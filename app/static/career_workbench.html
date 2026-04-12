@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 个人搜索 / 求职细节提取工作台</title>
+  <style>
+    :root {
+      --bg: #faf7f2;
+      --panel: #ffffff;
+      --border: #e5ddd0;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #9a3412;
+      --accent-soft: #ffedd5;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .page { max-width: 1360px; margin: 0 auto; padding: 24px 18px 40px; }
+    .topbar, .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 18px; }
+    .topbar { margin-bottom: 18px; }
+    .topbar h1 { margin: 0 0 8px; font-size: 30px; }
+    .topbar p { margin: 0; color: var(--muted); line-height: 1.7; }
+    .nav { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 18px; }
+    .panel h2 { margin: 0 0 12px; font-size: 20px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input, textarea { width: 100%; border: 1px solid #d6d3d1; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    textarea { min-height: 96px; resize: vertical; }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button { border: 0; border-radius: 999px; padding: 10px 16px; font-weight: 700; background: var(--accent); color: #fff; cursor: pointer; }
+    button.secondary { background: #475569; }
+    button.ghost { background: var(--blue-soft); color: var(--blue); }
+    .status { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+    .error { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); font-size: 13px; display: none; }
+    .list { display: grid; gap: 12px; }
+    .item { border: 1px solid #ebe5dc; border-radius: 14px; padding: 14px; background: #fff; }
+    .item h3 { margin: 0 0 8px; font-size: 16px; }
+    .meta { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
+    .fit { padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+    .mono { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 1024px) { .grid, .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="topbar">
+      <h1>个人搜索 / 求职细节提取工作台</h1>
+      <p>这里不是普通关键词搜索，而是求职增强型搜索：系统会根据你的背景和目标方向扩展技术词与业务词，从内部 Wiki 中找更适合补充简历和项目表述的真实业务证据。</p>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">运维工作台</a>
+        <a href="/docs">Swagger</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>搜索参数</h2>
+        <div class="field">
+          <label for="apiKey">X-API-Key</label>
+          <input id="apiKey" value="change-me" />
+        </div>
+        <div class="field">
+          <label for="cookie">Wiki Cookie</label>
+          <textarea id="cookie" placeholder="如果公司 Cookie 过期，可直接在这里输入新的值"></textarea>
+        </div>
+        <div class="field">
+          <label for="profileText">个人背景 / 简历关键词</label>
+          <textarea id="profileText">平台研发，关注 RAG、Agent、模型微调、推理服务、模型部署、运维自动化与内部平台落地实践。</textarea>
+        </div>
+        <div class="field">
+          <label for="focusTopics">focus_topics（逗号分隔）</label>
+          <input id="focusTopics" value="RAG,Agent,模型微调,推理服务,模型部署" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="pageSize">page_size</label>
+            <input id="pageSize" type="number" value="8" />
+          </div>
+          <div class="field">
+            <label for="maxQueries">max_queries</label>
+            <input id="maxQueries" type="number" value="10" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="pagesPerQuery">pages_per_query</label>
+            <input id="pagesPerQuery" type="number" value="2" />
+          </div>
+          <div class="field">
+            <label for="minScore">min_score</label>
+            <input id="minScore" type="number" step="0.5" value="2.5" />
+          </div>
+        </div>
+        <div class="actions">
+          <button id="recommendBtn">生成增强搜索结果</button>
+          <button id="exportBtn" class="secondary">导出推荐 Excel</button>
+        </div>
+        <div class="status" id="statusBox">输入背景后，系统会自动扩展查询词并聚合 Wiki 候选。</div>
+        <div class="error" id="errorBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>推荐结果</h2>
+        <div class="mono" id="summaryBox">尚未执行搜索</div>
+        <div class="list" id="recommendList" style="margin-top:12px;"></div>
+      </div>
+
+    </section>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+
+    async function api(path, options = {}) {
+      const headers = Object.assign(
+        {
+          "Content-Type": "application/json",
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+        options.headers || {}
+      );
+      const response = await fetch(path, Object.assign({}, options, { headers }));
+      if (options.download) {
+        if (!response.ok) throw new Error(await response.text());
+        return response.blob();
+      }
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+
+    function buildPayload() {
+      return {
+        profile_text: el("profileText").value.trim(),
+        focus_topics: el("focusTopics").value.split(",").map((item) => item.trim()).filter(Boolean),
+        page_size: Number(el("pageSize").value || 8),
+        max_queries: Number(el("maxQueries").value || 10),
+        pages_per_query: Number(el("pagesPerQuery").value || 2),
+        min_score: Number(el("minScore").value || 2.5),
+        cookie: el("cookie").value.trim() || null,
+      };
+    }
+
+    function renderRecommendations(data) {
+      el("summaryBox").textContent = JSON.stringify({
+        detected_doc_type: data.detected_doc_type,
+        query_candidates: data.query_candidates,
+        summary: data.summary,
+      }, null, 2);
+
+      const container = el("recommendList");
+      container.innerHTML = "";
+      (data.items || []).forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item";
+        card.innerHTML = `
+          <h3>${item.title || "待补充"}</h3>
+          <div class="meta">score=${item.score} | sn=${item.sn || ""}<br/>domain=${item.domain_title || "待补充"} | kanban=${item.kanban_title || "待补充"}</div>
+          <div class="chips">
+            <span class="fit">项目匹配度: ${item.project_fit || "low"}</span>
+            <span class="chip">skill 可行性: ${item.skill_feasibility || "low"}</span>
+          </div>
+          <div class="meta" style="margin-top:8px;">${item.summary || ""}</div>
+          <div class="meta" style="margin-top:8px;"><strong>推荐理由：</strong>${item.reason || ""}</div>
+          <div class="meta" style="margin-top:8px;"><strong>项目证据：</strong>${(item.project_evidence || []).join("、") || "无"}</div>
+          <div class="meta" style="margin-top:8px;"><strong>命中词：</strong>${(item.matched_terms || []).join("、") || "无"}</div>
+          <div class="meta" style="margin-top:8px;"><strong>搜索词：</strong>${item.query_used || ""}</div>
+          <div class="meta" style="margin-top:8px;"><strong>链接：</strong><a href="${item.url || "#"}" target="_blank">${item.url || "无"}</a></div>
+        `;
+        container.appendChild(card);
+      });
+      if (!data.items || !data.items.length) {
+        container.innerHTML = '<div class="item"><div class="meta">没有返回候选结果。</div></div>';
+      }
+    }
+
+    async function runRecommend() {
+      showError("");
+      showStatus("正在生成增强搜索结果...");
+      const data = await api("/api/wiki/recommend/expanded", {
+        method: "POST",
+        body: JSON.stringify(buildPayload()),
+      });
+      renderRecommendations(data);
+      showStatus(`推荐完成，共保留 ${data.items.length} 条结果。`);
+    }
+
+    async function exportExcel() {
+      showError("");
+      showStatus("正在导出 Excel...");
+      const blob = await api("/api/wiki/recommend/expanded/export", {
+        method: "POST",
+        body: JSON.stringify(buildPayload()),
+        download: true,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "wiki_recommendations.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
+      showStatus("Excel 导出完成。");
+    }
+
+    el("recommendBtn").onclick = () => runRecommend().catch((err) => { showError(err.message); showStatus("推荐失败"); });
+    el("exportBtn").onclick = () => exportExcel().catch((err) => { showError(err.message); showStatus("导出失败"); });
+  </script>
+</body>
+</html>

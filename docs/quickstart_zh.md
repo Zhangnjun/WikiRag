@@ -29,7 +29,12 @@ uvicorn app.main:app --reload
 
 启动后可以直接打开：
 
-- 调试页面：http://127.0.0.1:8000/rag-debug
+- 入口页面：http://127.0.0.1:8000/rag-debug
+- 运维工作台：http://127.0.0.1:8000/ops-workbench
+- 运维 Wiki 抽取页：http://127.0.0.1:8000/ops-wiki-ingest
+- 运维 RAG 查询页：http://127.0.0.1:8000/ops-rag-query
+- 运维 Skill 画像页：http://127.0.0.1:8000/ops-skill-profile
+- 个人搜索工作台：http://127.0.0.1:8000/career-workbench
 - Swagger 页面：http://127.0.0.1:8000/docs
 - 健康检查：http://127.0.0.1:8000/api/health
 
@@ -39,52 +44,27 @@ uvicorn app.main:app --reload
 
 最简单的方式是先手工导入一条 source，然后执行 normalize。
 
-## 第 6 步：打开调试页
+## 第 6 步：进入对应页面
 
 打开：
 
-http://127.0.0.1:8000/rag-debug
+- 如果你在做运维知识库：先进入 `http://127.0.0.1:8000/ops-workbench`
+- 如果你在做个人求职增强搜索：进入 `http://127.0.0.1:8000/career-workbench`
 
-页面默认已经填好测试参数。最简单的做法是直接点“提交”。
+运维侧已经拆成 3 个子页：
+
+1. `ops-wiki-ingest`：搜索 Wiki、导入 Source、normalize
+2. `ops-rag-query`：查询本地知识库
+3. `ops-skill-profile`：预览人员 Skill 画像
 
 ## 第 7 步：看哪里
 
-### 回答展示区
-
-看：
+运维查询页里重点看：
 
 - `answer`
-- `status`
-- `latency`
-- `session_id`
-
-### 引用展示区
-
-看：
-
-- 命中了哪篇文档
-- 来自哪个 section
-- chunk 摘要是不是对题
-
-### 检索片段展示区
-
-看：
-
-- chunk_id
-- score
-- section_title
-- content 摘要
-
-### Debug 信息区
-
-这是最重要的调试区域。
-
-如果结果不对，就看：
-
-- `keyword_hits`
-- `vector_hits`
-- `final_hits`
-- `query_rewrite`
+- `citations`
+- `retrieved_chunks`
+- `debug_info`
 
 ## 第 8 步：导入一条数据
 

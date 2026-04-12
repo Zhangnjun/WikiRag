@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import yaml
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ class WikiSettings(BaseModel):
     default_search_payload: Dict[str, Any] = Field(default_factory=dict)
     detail_type: str = "UI"
     timeout: int = 20
-    verify_ssl: bool = True
+    verify_ssl: Union[bool, str] = True
 
 
 class AISettings(BaseModel):

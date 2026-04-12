@@ -38,7 +38,13 @@ class SourceService:
             cookie_override = payload.get("cookie")
             if not wiki_sn:
                 raise AppError("wiki_sn is required when fetch_from_wiki=true; use /api/wiki/search first to choose result")
-            detail = self.wiki_service.fetch_detail(wiki_sn, domain_id, kanban_id, cookie_override=cookie_override)
+            detail = self.wiki_service.fetch_detail(
+                wiki_sn,
+                domain_id,
+                kanban_id,
+                cookie_override=cookie_override,
+                trace_id=trace_id,
+            )
             source_title = detail.get("title") or source_title
             source_url = self.wiki_service.build_url(domain_id, kanban_id, wiki_sn)
             raw_content = detail.get("rendered_text") or raw_content
