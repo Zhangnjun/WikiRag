@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 运维人员 Skill 画像</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #d9e2ec;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --mint: #0f766e;
+      --mint-soft: #ccfbf1;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1100px; margin: 0 auto; padding: 24px 18px 40px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    h1, h2 { margin: 0 0 10px; }
+    .desc { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--mint);
+      color: #fff;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--mint-soft);
+      color: var(--mint);
+      font-size: 13px;
+    }
+    .error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 13px;
+      display: none;
+    }
+    .mono {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <h1>运维人员 Skill 画像</h1>
+      <div class="desc">这里用于按人聚合已导入的 Wiki/source，预览该人员的技能画像和推荐扫描词。当前是 preview 版，为后续“找专家、按问题找人、按人扩展扫描”做结构预留。</div>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">返回运维工作台</a>
+        <a href="/ops-rag-query">运维 RAG 查询页</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>预览参数</h2>
+      <div class="field">
+        <label for="apiKey">X-API-Key</label>
+        <input id="apiKey" value="change-me" />
+      </div>
+      <div class="field">
+        <label for="personName">人员姓名</label>
+        <input id="personName" value="待替换为专家姓名" />
+      </div>
+      <div class="field">
+        <label for="focusTopics">focus_topics（逗号分隔）</label>
+        <input id="focusTopics" value="运维,排障,配置回滚,知识库" />
+      </div>
+      <div class="actions">
+        <button id="previewBtn">生成人员 Skill 画像预览</button>
+      </div>
+      <div class="status" id="statusBox">当前只基于本地已导入 source 的 owner 和文本做 preview。</div>
+      <div class="error" id="errorBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2>预览结果</h2>
+      <div class="mono" id="resultBox">尚未生成</div>
+    </section>
+  </div>
+  <script>
+    const el = (id) => document.getElementById(id);
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+    async function api(path, options = {}) {
+      const headers = Object.assign(
+        {
+          "Content-Type": "application/json",
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+        options.headers || {}
+      );
+      const response = await fetch(path, Object.assign({}, options, { headers }));
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+    async function preview() {
+      showError("");
+      showStatus("正在生成人员 Skill 画像预览...");
+      const data = await api("/api/expert/profile/preview", {
+        method: "POST",
+        body: JSON.stringify({
+          person_name: el("personName").value.trim(),
+          focus_topics: el("focusTopics").value.split(",").map((item) => item.trim()).filter(Boolean),
+        }),
+      });
+      el("resultBox").textContent = JSON.stringify(data, null, 2);
+      showStatus("人员 Skill 画像预览已生成。");
+    }
+    el("previewBtn").onclick = () => preview().catch((err) => { showError(err.message); showStatus("预览失败"); });
+  </script>
+</body>
+</html>

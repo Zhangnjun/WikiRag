@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 已导入 Wiki 文档</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #d9e2ec;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .page { max-width: 1320px; margin: 0 auto; padding: 24px 18px 40px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px; }
+    .panel h1, .panel h2 { margin: 0 0 10px; }
+    .desc, .meta { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input, select { width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button { border: 0; border-radius: 999px; padding: 10px 16px; font-weight: 700; cursor: pointer; background: var(--blue); color: #fff; }
+    .status { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
+    .error { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); font-size: 13px; display: none; }
+    .list { display: grid; gap: 12px; }
+    .item { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; background: #fff; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
+    .mono { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 1100px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <h1>已导入 Wiki 文档</h1>
+      <div class="desc">这里查看已经导入到本地 Source 的 Wiki 文档，确认导入状态、创建人和后续 normalize 结果。</div>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">返回运维工作台</a>
+        <a href="/ops-wiki-ingest">返回 Wiki 抽取页</a>
+        <a href="/ops-author-explorer">创建人检索 / 候选专家</a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>筛选条件</h2>
+      <div class="row">
+        <div class="field">
+          <label for="apiKey">X-API-Key</label>
+          <input id="apiKey" value="change-me" />
+        </div>
+        <div class="field">
+          <label for="title">标题包含</label>
+          <input id="title" placeholder="空闲连接超时时间" />
+        </div>
+        <div class="field">
+          <label for="owner">创建人 / owner</label>
+          <input id="owner" placeholder="吴凯 / 30049962" />
+        </div>
+        <div class="field">
+          <label for="pageSize">page_size</label>
+          <input id="pageSize" type="number" value="20" />
+        </div>
+      </div>
+      <div class="actions">
+        <button id="loadBtn">刷新列表</button>
+      </div>
+      <div class="status" id="statusBox">默认只看 `source_type=wiki_api` 的已导入文档。</div>
+      <div class="error" id="errorBox"></div>
+    </section>
+
+    <section class="panel">
+      <h2>文档列表</h2>
+      <div class="mono" id="summaryBox">尚未加载</div>
+      <div class="list" id="listBox" style="margin-top: 12px;"></div>
+    </section>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+    async function api(path) {
+      const response = await fetch(path, {
+        headers: {
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+    function renderItems(items) {
+      const container = el("listBox");
+      container.innerHTML = "";
+      if (!items.length) {
+        container.innerHTML = '<div class="item"><div class="meta">没有命中已导入 Wiki 文档。</div></div>';
+        return;
+      }
+      items.forEach((item) => {
+        const createdByName = item.metadata?.created_by_name || item.owner || "待补充";
+        const createdByAccount = item.metadata?.created_by_account || "";
+        const detailUrl = item.source_url || "#";
+        const card = document.createElement("div");
+        card.className = "item";
+        card.innerHTML = `
+          <h3>${item.source_title || "待补充"}</h3>
+          <div class="meta">source_id: ${item.source_id}<br/>external_id: ${item.external_id || ""}<br/>created_by: ${createdByName} ${createdByAccount}<br/>updated_at: ${item.updated_at || ""}<br/>normalize_status: ${item.normalize_status || ""}</div>
+          <div class="chips">
+            <span class="chip">${item.source_type || ""}</span>
+            ${(item.linked_doc_types || []).map((docType) => `<span class="chip">${docType}</span>`).join("")}
+          </div>
+          <div class="meta" style="margin-top: 8px;"><strong>链接：</strong><a href="${detailUrl}" target="_blank">${detailUrl}</a></div>
+          <div class="meta" style="margin-top: 8px;"><strong>tags：</strong>${(item.tags || []).join("、") || "无"}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+    async function loadImportedWiki() {
+      showError("");
+      showStatus("正在加载已导入 Wiki 文档...");
+      const params = new URLSearchParams({
+        source_type: "wiki_api",
+        page: "1",
+        page_size: String(Number(el("pageSize").value || 20)),
+      });
+      if (el("title").value.trim()) params.set("title", el("title").value.trim());
+      if (el("owner").value.trim()) params.set("owner", el("owner").value.trim());
+      const data = await api(`/api/source/list?${params.toString()}`);
+      el("summaryBox").textContent = JSON.stringify({
+        total: data.total,
+        page: data.page,
+        page_size: data.page_size,
+      }, null, 2);
+      renderItems(data.items || []);
+      showStatus(`已加载 ${data.items.length} 条 Wiki Source。`);
+    }
+    el("loadBtn").onclick = () => loadImportedWiki().catch((err) => { showError(err.message); showStatus("加载失败"); });
+    loadImportedWiki().catch((err) => { showError(err.message); showStatus("初始化加载失败"); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+"""WikiRag application package."""
+

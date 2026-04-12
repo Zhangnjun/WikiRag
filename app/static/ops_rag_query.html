@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 运维 RAG 查询页</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #d9e2ec;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    .page { max-width: 1240px; margin: 0 auto; padding: 24px 18px 40px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .panel h1, .panel h2 { margin: 0 0 10px; }
+    .desc { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--blue);
+      color: #fff;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 13px;
+    }
+    .error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 13px;
+      display: none;
+    }
+    .item {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff;
+      margin-bottom: 12px;
+    }
+    .item h3 { margin: 0 0 8px; font-size: 16px; }
+    .mono {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <h1>运维 RAG 查询页</h1>
+      <div class="desc">这个页面只查本地已经入库的 knowledge / chunk，不直接请求远端 Huawei Wiki。先在“运维工作台”完成 Wiki 导入和 normalize，再回到这里查询。</div>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">返回 Wiki 入库页</a>
+        <a href="/career-workbench">个人搜索工作台</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>查询参数</h2>
+        <div class="field">
+          <label for="apiKey">X-API-Key</label>
+          <input id="apiKey" value="change-me" />
+        </div>
+        <div class="field">
+          <label for="query">RAG query</label>
+          <input id="query" value="配置变更异常后怎么回滚" />
+        </div>
+        <div class="field">
+          <label for="docType">doc_type filter</label>
+          <input id="docType" value="配置与治理知识库" />
+        </div>
+        <div class="field">
+          <label for="sourceId">source_id filter（可选）</label>
+          <input id="sourceId" placeholder="如果只想查某个已导入 source，可填这里" />
+        </div>
+        <div class="actions">
+          <button id="queryBtn">发起 RAG 查询</button>
+        </div>
+        <div class="status" id="statusBox">这里查的是本地知识库，不会直接访问远端 Wiki。</div>
+        <div class="error" id="errorBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>说明</h2>
+        <div class="desc">
+          `doc_type filter` 只作用于本地知识库过滤。例如填“配置与治理知识库”，表示只在这类 knowledge 文档对应的 chunk 里检索。
+          如果你这里查不到内容，通常不是 Wiki 搜索问题，而是本地还没完成导入或 normalize。
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>RAG 结果</h2>
+      <div class="item">
+        <h3>answer</h3>
+        <div class="mono" id="answer">尚未查询</div>
+      </div>
+      <div class="item">
+        <h3>citations</h3>
+        <div class="mono" id="citations">尚未查询</div>
+      </div>
+      <div class="item">
+        <h3>retrieved_chunks</h3>
+        <div class="mono" id="chunks">尚未查询</div>
+      </div>
+      <div class="item">
+        <h3>debug_info</h3>
+        <div class="mono" id="debug">尚未查询</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+
+    async function api(path, options = {}) {
+      const headers = Object.assign(
+        {
+          "Content-Type": "application/json",
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+        options.headers || {}
+      );
+      const response = await fetch(path, Object.assign({}, options, { headers }));
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+
+    async function runQuery() {
+      showError("");
+      showStatus("正在执行本地 RAG 查询...");
+      const data = await api("/api/rag/query", {
+        method: "POST",
+        body: JSON.stringify({
+          query: el("query").value.trim(),
+          top_k: 3,
+          use_rerank: true,
+          use_ai: false,
+          debug: true,
+          filters: {
+            doc_type: el("docType").value.trim() || undefined,
+            source_id: el("sourceId").value.trim() || undefined,
+          },
+        }),
+      });
+      el("answer").textContent = data.answer || "";
+      el("citations").textContent = JSON.stringify(data.citations || [], null, 2);
+      el("chunks").textContent = JSON.stringify(data.retrieved_chunks || [], null, 2);
+      el("debug").textContent = JSON.stringify(data.debug_info || {}, null, 2);
+      showStatus(`查询完成，status=${data.status}，latency=${data.latency_ms}ms`);
+    }
+
+    el("queryBtn").onclick = () => runQuery().catch((err) => { showError(err.message); showStatus("RAG 查询失败"); });
+  </script>
+</body>
+</html>

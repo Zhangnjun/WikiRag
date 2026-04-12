@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 运维 Wiki 抽取与入库</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #d9e2ec;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .page { max-width: 1320px; margin: 0 auto; padding: 24px 18px 40px; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .stack { display: grid; gap: 18px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .panel h1, .panel h2, .panel h3 { margin: 0 0 10px; }
+    .desc, .section-note { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 700;
+      background: var(--blue);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary { background: #475569; }
+    button.ghost { background: var(--blue-soft); color: var(--blue); }
+    .status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 13px;
+    }
+    .error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-size: 13px;
+      display: none;
+    }
+    .list { display: grid; gap: 10px; }
+    .item { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #fff; }
+    .item.selected { border-color: var(--blue); background: #f8fbff; }
+    .meta { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .mono {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
+    @media (max-width: 1100px) {
+      .layout, .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <h1>运维 Wiki 抽取与入库</h1>
+      <div class="desc">这里专门负责远端 Huawei Wiki 的搜索、候选选择、导入 Source 和 normalize 入库，不承担本地 RAG 查询。</div>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">返回运维工作台</a>
+        <a href="/ops-rag-query">运维 RAG 查询页</a>
+        <a href="/ops-imported-wiki">已导入 Wiki 文档</a>
+        <a href="/ops-author-explorer">创建人检索 / 候选专家</a>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="stack">
+        <div class="panel">
+          <h2>步骤 1：Wiki 搜索与入库</h2>
+          <div class="section-note">先搜候选，再选中并导入。导入成功后可以直接做 normalize，把远端 Wiki 变成本地 knowledge。</div>
+          <div class="row">
+            <div class="field">
+              <label for="searchQuery">search_query</label>
+              <input id="searchQuery" value="空闲连接超时时间" />
+            </div>
+            <div class="field">
+              <label for="pageSize">page_size</label>
+              <input id="pageSize" type="number" value="10" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="wikiSn">wikiSn</label>
+              <input id="wikiSn" value="WIKI202504166573720" />
+            </div>
+            <div class="field">
+              <label for="kanbanId">kanbanId</label>
+              <input id="kanbanId" value="17668" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="searchScope">searchScope</label>
+              <input id="searchScope" value="ALL" />
+            </div>
+            <div class="field">
+              <label for="isAccurate">isAccurate（true / false）</label>
+              <input id="isAccurate" value="false" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="sortField">sortFiled（默认留空）</label>
+              <input id="sortField" placeholder="create_time / last_update_time / view_count" />
+            </div>
+            <div class="field">
+              <label for="sortWay">sortWay（默认留空）</label>
+              <input id="sortWay" placeholder="DESC / ASC" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="sourceTags">导入 tags（逗号分隔）</label>
+            <input id="sourceTags" value="wiki,运维助手,工作台导入" />
+            <div class="section-note">这些 tag 只是给导入后的 source 打标签，方便后续筛选和管理，不影响 Wiki 抓取本身。</div>
+          </div>
+          <div class="actions">
+            <button id="searchBtn">搜索 Wiki</button>
+            <button id="normalizeBtn" class="secondary">规范化当前 Source</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Wiki 搜索结果</h2>
+          <div class="list" id="wikiResults"></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <h2>基础参数</h2>
+          <div class="field">
+            <label for="apiKey">X-API-Key</label>
+            <input id="apiKey" value="change-me" />
+          </div>
+          <div class="field">
+            <label for="cookie">Wiki Cookie</label>
+            <textarea id="cookie" placeholder="Cookie 过期后可以直接在这里替换，不需要改配置重启"></textarea>
+          </div>
+          <div class="status" id="statusBox">先搜索并导入 Wiki，再决定是否执行 normalize。</div>
+          <div class="error" id="errorBox"></div>
+        </div>
+
+        <div class="panel">
+          <h2>当前链路状态</h2>
+          <div class="list">
+            <div class="item">
+              <h3>选中 Wiki</h3>
+              <div class="mono" id="selectedWiki">未选择</div>
+            </div>
+            <div class="item">
+              <h3>当前 source</h3>
+              <div class="mono" id="currentSource">未导入</div>
+            </div>
+            <div class="item">
+              <h3>当前 knowledge</h3>
+              <div class="mono" id="currentKnowledge">未规范化</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const state = { selectedWiki: null, source: null, knowledge: null };
+    const el = (id) => document.getElementById(id);
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+    async function api(path, options = {}) {
+      const headers = Object.assign(
+        {
+          "Content-Type": "application/json",
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+        options.headers || {}
+      );
+      const response = await fetch(path, Object.assign({}, options, { headers }));
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+    function wikiPayload() {
+      return { cookie: el("cookie").value.trim() || null };
+    }
+    function currentTags() {
+      return el("sourceTags").value.split(",").map((item) => item.trim()).filter(Boolean);
+    }
+    function renderSelectedState() {
+      el("selectedWiki").textContent = state.selectedWiki ? JSON.stringify(state.selectedWiki, null, 2) : "未选择";
+      el("currentSource").textContent = state.source ? JSON.stringify(state.source, null, 2) : "未导入";
+      el("currentKnowledge").textContent = state.knowledge ? JSON.stringify(state.knowledge, null, 2) : "未规范化";
+    }
+    function renderWikiResults(items) {
+      const container = el("wikiResults");
+      container.innerHTML = "";
+      if (!items.length) {
+        container.innerHTML = '<div class="item"><div class="meta">没有返回 Wiki 结果。</div></div>';
+        return;
+      }
+      items.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item";
+        if (state.selectedWiki && state.selectedWiki.sn === item.sn) {
+          card.classList.add("selected");
+        }
+        card.innerHTML = `
+          <h3>${item.title || "待补充"}</h3>
+          <div class="meta">sn: ${item.sn || ""}<br/>domain_id: ${item.domain_id || ""} | kanban_id: ${item.kanban_id || ""}<br/>created_by: ${item.created_by_name || "待补充"} ${item.created_by_account || ""}<br/>created_at: ${item.created_at || ""}<br/>updated_at: ${item.updated_at || ""}</div>
+          <div class="chips">
+            <span class="chip">${item.domain_title || "待补充"}</span>
+            <span class="chip">${item.kanban_title || "待补充"}</span>
+          </div>
+          <div class="meta" style="margin-top:8px;">${item.summary || ""}</div>
+          <div class="actions">
+            <button data-action="select">选中</button>
+            <button class="secondary" data-action="import">导入为 Source</button>
+          </div>
+        `;
+        card.querySelector('[data-action="select"]').onclick = () => {
+          state.selectedWiki = item;
+          renderSelectedState();
+          renderWikiResults(items);
+          showStatus(`已选中 Wiki: ${item.title || item.sn}`);
+        };
+        card.querySelector('[data-action="import"]').onclick = async () => {
+          state.selectedWiki = item;
+          renderSelectedState();
+          await importSelectedWiki();
+          renderWikiResults(items);
+        };
+        container.appendChild(card);
+      });
+    }
+    async function searchWiki() {
+      showError("");
+      showStatus("正在搜索 Wiki...");
+      const payload = Object.assign(wikiPayload(), {
+        search_query: el("searchQuery").value.trim(),
+        page: 1,
+        page_size: Number(el("pageSize").value || 10),
+        search_scope: el("searchScope").value.trim() || "ALL",
+        is_accurate: String(el("isAccurate").value).trim().toLowerCase() === "true",
+        wiki_sn: el("wikiSn").value.trim() || null,
+        kanban_id: el("kanbanId").value.trim() || null,
+        sort_field: el("sortField").value.trim() || null,
+        sort_way: el("sortWay").value.trim() || null,
+      });
+      const data = await api("/api/wiki/search", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      renderWikiResults(data.items || []);
+      showStatus(`Wiki 搜索完成，共返回 ${data.total || 0} 条结果。`);
+    }
+    async function importSelectedWiki() {
+      if (!state.selectedWiki) throw new Error("请先选中一条 Wiki。");
+      showError("");
+      showStatus("正在导入选中 Wiki...");
+      const payload = Object.assign(wikiPayload(), {
+        source_type: "wiki_api",
+        fetch_from_wiki: true,
+        wiki_sn: state.selectedWiki.sn,
+        domain_id: state.selectedWiki.domain_id,
+        kanban_id: state.selectedWiki.kanban_id,
+        owner: state.selectedWiki.created_by_name || state.selectedWiki.created_by_account || "待补充",
+        tags: currentTags(),
+        skip_if_exists: true,
+        overwrite_if_exists: false,
+        metadata: {
+          created_by_name: state.selectedWiki.created_by_name || "",
+          created_by_account: state.selectedWiki.created_by_account || "",
+          search_query: el("searchQuery").value.trim(),
+        },
+      });
+      state.source = await api("/api/source/import", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      renderSelectedState();
+      showStatus(`Wiki 已导入 source: ${state.source.source_id}`);
+    }
+    async function normalizeCurrentSource() {
+      if (!state.source || !state.source.source_id) throw new Error("请先导入 source。");
+      showError("");
+      showStatus("正在规范化当前 source...");
+      state.knowledge = await api("/api/knowledge/normalize", {
+        method: "POST",
+        body: JSON.stringify({
+          source_id: state.source.source_id,
+          use_ai: false,
+        }),
+      });
+      renderSelectedState();
+      showStatus(`knowledge 已生成: ${state.knowledge.doc_id}`);
+    }
+    el("searchBtn").onclick = () => searchWiki().catch((err) => { showError(err.message); showStatus("Wiki 搜索失败"); });
+    el("normalizeBtn").onclick = () => normalizeCurrentSource().catch((err) => { showError(err.message); showStatus("规范化失败"); });
+    renderSelectedState();
+  </script>
+</body>
+</html>

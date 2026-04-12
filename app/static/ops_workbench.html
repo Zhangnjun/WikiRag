@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 运维工作台</title>
+  <style>
+    :root {
+      --bg: #f7fafc;
+      --panel: #ffffff;
+      --border: #dbe4ee;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --mint: #0f766e;
+      --mint-soft: #ccfbf1;
+      --amber: #b45309;
+      --amber-soft: #ffedd5;
+      --shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "PingFang SC", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, #dbeafe 0, transparent 30%),
+        radial-gradient(circle at top right, #ccfbf1 0, transparent 24%),
+        var(--bg);
+    }
+    .page { max-width: 1200px; margin: 0 auto; padding: 32px 20px 48px; }
+    .hero, .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+    .hero { padding: 24px; margin-bottom: 22px; }
+    .hero h1 { margin: 0 0 10px; font-size: 34px; }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.75; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .card { padding: 22px; }
+    .card h2 { margin: 0 0 10px; font-size: 24px; }
+    .card p { margin: 0 0 14px; color: var(--muted); line-height: 1.75; min-height: 84px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .chip { padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .chip.blue { background: var(--blue-soft); color: var(--blue); }
+    .chip.mint { background: var(--mint-soft); color: var(--mint); }
+    .chip.amber { background: var(--amber-soft); color: var(--amber); }
+    .button {
+      display: inline-block;
+      text-decoration: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .button.blue { background: var(--blue); }
+    .button.mint { background: var(--mint); }
+    .button.amber { background: var(--amber); }
+    .note {
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 28px; }
+      .card p { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>运维工作台</h1>
+      <p>运维侧不要把所有能力堆在一个页面里。当前拆成五个独立入口：`Wiki 抽取与入库`、`已导入 Wiki 文档`、`RAG 查询`、`人员 Skill 画像`、`创建人检索/候选专家`。你先选场景，再进入对应工作流。</p>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/career-workbench">个人搜索工作台</a>
+        <a href="/docs">Swagger</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Wiki 抽取与入库</h2>
+        <p>从 Huawei Wiki 搜索候选文档，选中后导入 Source，并继续做 normalize，形成可检索的本地 knowledge。</p>
+        <div class="chips">
+          <span class="chip blue">搜索 Wiki</span>
+          <span class="chip blue">导入 Source</span>
+          <span class="chip blue">normalize</span>
+        </div>
+        <a class="button blue" href="/ops-wiki-ingest">进入 Wiki 抽取页</a>
+      </article>
+
+      <article class="card">
+        <h2>已导入 Wiki 文档</h2>
+        <p>查看已经导入到本地 Source 的 Wiki 文档，确认创建人、normalize 状态、外部链接和标签，避免“导入成功但无处查看”。</p>
+        <div class="chips">
+          <span class="chip blue">已导入文档</span>
+          <span class="chip blue">Source 列表</span>
+          <span class="chip blue">状态核对</span>
+        </div>
+        <a class="button blue" href="/ops-imported-wiki">查看已导入文档</a>
+      </article>
+
+      <article class="card">
+        <h2>RAG 查询</h2>
+        <p>只对本地已经入库、已完成 chunk / retrieval 的知识文档执行 RAG 查询，适合验证 answer、citations 和 debug 信息。</p>
+        <div class="chips">
+          <span class="chip mint">本地知识</span>
+          <span class="chip mint">RAG 查询</span>
+          <span class="chip mint">引用验证</span>
+        </div>
+        <a class="button mint" href="/ops-rag-query">进入 RAG 查询页</a>
+      </article>
+
+      <article class="card">
+        <h2>人员 Skill 画像</h2>
+        <p>按人聚合 Wiki 与已导入 source，预览内部专家的技能画像，为后续“找专家、按问题找人、按人扩展扫描”做准备。</p>
+        <div class="chips">
+          <span class="chip amber">按人聚合</span>
+          <span class="chip amber">技能画像</span>
+          <span class="chip amber">专家预览</span>
+        </div>
+        <a class="button amber" href="/ops-skill-profile">进入 Skill 画像页</a>
+      </article>
+
+      <article class="card">
+        <h2>创建人检索 / 候选专家</h2>
+        <p>直接使用 `searchScope=AUTHOR` 按工号或账号搜文章，再按主题聚合创建人文章，输出候选专家和可能 skill 的建议型结果。</p>
+        <div class="chips">
+          <span class="chip amber">AUTHOR 检索</span>
+          <span class="chip amber">候选专家</span>
+          <span class="chip amber">skill 建议</span>
+        </div>
+        <a class="button amber" href="/ops-author-explorer">进入创建人检索页</a>
+      </article>
+    </section>
+
+    <div class="note">
+      说明：你刚才看到的 `导入 tags` 属于 Source 元数据标签，只用于导入后的分类与筛选，不是抓取参数。这个字段会保留在 Wiki 抽取页，不再出现在运维工作台入口页。
+    </div>
+  </div>
+</body>
+</html>

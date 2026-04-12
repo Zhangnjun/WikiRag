@@ -1,0 +1,9 @@
+.DS_Store
+.venv/
+.venvtest/
+__pycache__/
+*.pyc
+
+app/data/*.db
+outputs/
+validation_outputs/

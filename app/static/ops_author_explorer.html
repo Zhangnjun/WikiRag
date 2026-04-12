@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WikiRag 创建人检索与候选专家建议</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --border: #d9e2ec;
+      --text: #0f172a;
+      --muted: #64748b;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --amber: #b45309;
+      --amber-soft: #ffedd5;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    .page { max-width: 1360px; margin: 0 auto; padding: 24px 18px 40px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px; }
+    .panel h1, .panel h2 { margin: 0 0 10px; }
+    .desc, .meta { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 420px 1fr; gap: 18px; align-items: start; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    input, textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    button { border: 0; border-radius: 999px; padding: 10px 16px; font-weight: 700; cursor: pointer; background: var(--blue); color: #fff; }
+    button.secondary { background: var(--amber); }
+    .status { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
+    .error { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); font-size: 13px; display: none; }
+    .list { display: grid; gap: 12px; }
+    .item { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; background: #fff; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
+    .chip.amber { background: var(--amber-soft); color: var(--amber); }
+    .mono { white-space: pre-wrap; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.6; }
+    @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="panel">
+      <h1>创建人检索与候选专家建议</h1>
+      <div class="desc">这里把华为 Wiki 原生 `searchScope=AUTHOR` 能力暴露出来，并基于创建人文章做“候选专家 / 可能 skill”的建议型输出，不直接下确定性结论。</div>
+      <div class="nav">
+        <a href="/rag-debug">返回入口</a>
+        <a href="/ops-workbench">返回运维工作台</a>
+        <a href="/ops-wiki-ingest">Wiki 抽取页</a>
+        <a href="/ops-imported-wiki">已导入 Wiki 文档</a>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>参数</h2>
+        <div class="field">
+          <label for="apiKey">X-API-Key</label>
+          <input id="apiKey" value="change-me" />
+        </div>
+        <div class="field">
+          <label for="cookie">Wiki Cookie</label>
+          <textarea id="cookie" placeholder="Cookie 过期后可以直接在这里替换"></textarea>
+        </div>
+        <div class="field">
+          <label for="authorQuery">按创建人搜索（工号 / 账号 / 姓名）</label>
+          <input id="authorQuery" value="30049962" />
+        </div>
+        <div class="field">
+          <label for="topicQuery">主题搜索（用于候选专家建议）</label>
+          <input id="topicQuery" value="推理" />
+        </div>
+        <div class="field">
+          <label for="wikiSn">wikiSn</label>
+          <input id="wikiSn" value="WIKI202504166573720" />
+        </div>
+        <div class="field">
+          <label for="kanbanId">kanbanId</label>
+          <input id="kanbanId" value="17668" />
+        </div>
+        <div class="actions">
+          <button id="authorBtn">按创建人搜索文章</button>
+          <button id="candidateBtn" class="secondary">生成候选专家建议</button>
+        </div>
+        <div class="status" id="statusBox">先验证 AUTHOR 检索是否正确，再看建议型输出。</div>
+        <div class="error" id="errorBox"></div>
+      </div>
+
+      <div class="panel">
+        <h2>结果</h2>
+        <div class="mono" id="summaryBox">尚未执行</div>
+        <div class="list" id="resultList" style="margin-top: 12px;"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    function showStatus(message) { el("statusBox").textContent = message; }
+    function showError(message) {
+      const box = el("errorBox");
+      if (!message) {
+        box.style.display = "none";
+        box.textContent = "";
+        return;
+      }
+      box.style.display = "block";
+      box.textContent = message;
+    }
+    async function api(path, body) {
+      const response = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": el("apiKey").value.trim(),
+        },
+        body: JSON.stringify(body),
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      return data;
+    }
+    function commonPayload() {
+      return {
+        wiki_sn: el("wikiSn").value.trim() || null,
+        kanban_id: el("kanbanId").value.trim() || null,
+        cookie: el("cookie").value.trim() || null,
+      };
+    }
+    function renderAuthorSearch(data) {
+      el("summaryBox").textContent = JSON.stringify(data.stats, null, 2);
+      const container = el("resultList");
+      container.innerHTML = "";
+      (data.items || []).forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item";
+        card.innerHTML = `
+          <h3>${item.title || "待补充"}</h3>
+          <div class="meta">created_by: ${item.created_by_name || "待补充"} ${item.created_by_account || ""}<br/>kanban: ${item.kanban_title || ""}<br/>created_at: ${item.created_at || ""}<br/>updated_at: ${item.updated_at || ""}</div>
+          <div class="meta" style="margin-top: 8px;">${item.summary || ""}</div>
+          <div class="meta" style="margin-top: 8px;"><a href="${item.url || "#"}" target="_blank">${item.url || "无链接"}</a></div>
+        `;
+        container.appendChild(card);
+      });
+      if (!data.items || !data.items.length) {
+        container.innerHTML = '<div class="item"><div class="meta">没有找到该创建人的文章。</div></div>';
+      }
+    }
+    function renderCandidates(data) {
+      el("summaryBox").textContent = JSON.stringify({ topic_query: data.topic_query, candidates: data.candidates.length }, null, 2);
+      const container = el("resultList");
+      container.innerHTML = "";
+      (data.candidates || []).forEach((candidate) => {
+        const relatedArticles = (candidate.related_articles || []).map((item) => `<li>${item.title || "待补充"}</li>`).join("");
+        const card = document.createElement("div");
+        card.className = "item";
+        card.innerHTML = `
+          <h3>${candidate.created_by_name || "待补充"} ${candidate.created_by_account || ""}</h3>
+          <div class="chips">
+            <span class="chip amber">文章数: ${candidate.article_count}</span>
+            <span class="chip">主题集中度: ${candidate.topic_concentration}</span>
+          </div>
+          <div class="meta" style="margin-top: 8px;"><strong>建议：</strong>${candidate.recommendation || ""}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>可能 skill：</strong>${(candidate.possible_skills || []).join("、") || "无"}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>依据：</strong>${(candidate.evidence || []).join("；") || "无"}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>相关文章：</strong><ul>${relatedArticles || "<li>无</li>"}</ul></div>
+        `;
+        container.appendChild(card);
+      });
+      if (!data.candidates || !data.candidates.length) {
+        container.innerHTML = '<div class="item"><div class="meta">当前主题没有形成足够的候选专家线索。</div></div>';
+      }
+    }
+    async function runAuthorSearch() {
+      showError("");
+      showStatus("正在按创建人搜索文章...");
+      const data = await api("/api/wiki/author/search", {
+        author_query: el("authorQuery").value.trim(),
+        page_size: 10,
+        max_pages: 3,
+        ...commonPayload(),
+      });
+      renderAuthorSearch(data);
+      showStatus(`创建人搜索完成，共返回 ${data.items.length} 篇文章。`);
+    }
+    async function runCandidates() {
+      showError("");
+      showStatus("正在生成候选专家建议...");
+      const data = await api("/api/wiki/author/candidates", {
+        topic_query: el("topicQuery").value.trim(),
+        page_size: 10,
+        candidate_limit: 5,
+        author_page_size: 20,
+        author_max_pages: 3,
+        ...commonPayload(),
+      });
+      renderCandidates(data);
+      showStatus(`候选专家建议完成，共生成 ${data.candidates.length} 条候选。`);
+    }
+    el("authorBtn").onclick = () => runAuthorSearch().catch((err) => { showError(err.message); showStatus("创建人搜索失败"); });
+    el("candidateBtn").onclick = () => runCandidates().catch((err) => { showError(err.message); showStatus("候选专家建议失败"); });
+  </script>
+</body>
+</html>
