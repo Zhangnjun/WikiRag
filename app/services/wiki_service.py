@@ -489,13 +489,11 @@ class WikiService:
             trace_id=trace_id,
         )
         author_counter: Counter[tuple[str, str]] = Counter()
-        author_seed_items: Dict[tuple[str, str], List[Dict[str, Any]]] = {}
         for item in topic_payload["items"]:
             key = (item.get("created_by_name", ""), item.get("created_by_account", ""))
             if not key[0] and not key[1]:
                 continue
             author_counter[key] += 1
-            author_seed_items.setdefault(key, []).append(item)
 
         candidates = []
         for (created_by_name, created_by_account), _ in author_counter.most_common(candidate_limit):
@@ -511,9 +509,7 @@ class WikiService:
             )
             author_items = author_payload["items"]
             keywords = author_payload["stats"]["high_frequency_keywords"]
-            topic_hits = sum(
-                1 for keyword in keywords if keyword and keyword.lower() in topic_query.lower()
-            )
+            topic_hits = sum(1 for keyword in keywords if keyword and keyword.lower() in topic_query.lower())
             topic_concentration = round(topic_hits / max(len(keywords), 1), 2) if keywords else 0.0
             evidence = [
                 f"主题搜索命中 {author_counter[(created_by_name, created_by_account)]} 篇",
@@ -523,10 +519,6 @@ class WikiService:
                 evidence.append(f"最近更新时间 {author_payload['stats']['latest_updated_at']}")
             if keywords:
                 evidence.append("高频关键词: " + "、".join(keywords[:6]))
-            recommendation = self._build_candidate_recommendation(
-                article_count=author_payload["stats"]["article_count"],
-                topic_concentration=topic_concentration,
-            )
             candidates.append(
                 {
                     "created_by_name": created_by_name,
@@ -536,7 +528,10 @@ class WikiService:
                     "possible_skills": keywords[:6],
                     "evidence": evidence,
                     "topic_concentration": topic_concentration,
-                    "recommendation": recommendation,
+                    "recommendation": self._build_candidate_recommendation(
+                        article_count=author_payload["stats"]["article_count"],
+                        topic_concentration=topic_concentration,
+                    ),
                     "related_articles": author_items[:5],
                 }
             )
@@ -577,10 +572,7 @@ class WikiService:
                 or raw_created_by.get("userId")
             )
             return name, account
-        if isinstance(raw_created_by, list):
-            text = WikiService._normalize_text(raw_created_by)
-        else:
-            text = WikiService._normalize_text(raw_created_by)
+        text = WikiService._normalize_text(raw_created_by)
         if not text:
             return "", ""
         parts = text.split()
