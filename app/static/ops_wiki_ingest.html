@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WikiRag 运维 Wiki 抽取与入库</title>
+  <title>WikiRag Wiki 检索与入库</title>
   <style>
     :root {
       --bg: #f8fafc;
@@ -13,34 +13,56 @@
       --muted: #64748b;
       --blue: #1d4ed8;
       --blue-soft: #dbeafe;
+      --amber: #b45309;
+      --amber-soft: #ffedd5;
       --danger: #b91c1c;
       --danger-soft: #fee2e2;
       --shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "PingFang SC", "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
-    .page { max-width: 1320px; margin: 0 auto; padding: 24px 18px 40px; }
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
-      gap: 18px;
-      align-items: start;
-    }
+    .page { max-width: 1440px; margin: 0 auto; padding: 24px 18px 40px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr); gap: 18px; align-items: start; }
     .stack { display: grid; gap: 18px; }
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      padding: 18px;
-    }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 18px; }
     .panel h1, .panel h2, .panel h3 { margin: 0 0 10px; }
-    .desc, .section-note { color: var(--muted); line-height: 1.7; font-size: 14px; }
-    .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .desc, .meta, .section-note { color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .nav, .tabs, .actions, .pager, .chips { display: flex; gap: 10px; flex-wrap: wrap; }
+    .substack { display: grid; gap: 14px; margin-top: 14px; }
+    .subpanel {
+      border: 1px solid #dbe4ee;
+      border-radius: 16px;
+      padding: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+    .subpanel h3 { margin: 0 0 8px; }
+    .optional-block {
+      margin-top: 14px;
+      border: 1px dashed #cbd5e1;
+      background: #fcfdff;
+    }
+    .optional-block summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav { margin-top: 12px; }
     .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
-    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .tabs { margin-top: 12px; }
+    .tab {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
     .field { margin-bottom: 12px; }
     .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     input, textarea {
       width: 100%;
       border: 1px solid #cbd5e1;
@@ -49,18 +71,19 @@
       font-size: 14px;
     }
     textarea { min-height: 88px; resize: vertical; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     button {
       border: 0;
       border-radius: 999px;
       padding: 10px 16px;
       font-weight: 700;
+      cursor: pointer;
       background: var(--blue);
       color: #fff;
-      cursor: pointer;
     }
     button.secondary { background: #475569; }
+    button.amber { background: var(--amber); }
     button.ghost { background: var(--blue-soft); color: var(--blue); }
+    button[disabled] { opacity: 0.45; cursor: not-allowed; }
     .status {
       margin-top: 10px;
       padding: 10px 12px;
@@ -81,7 +104,8 @@
     .list { display: grid; gap: 10px; }
     .item { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #fff; }
     .item.selected { border-color: var(--blue); background: #f8fbff; }
-    .meta { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
+    .chip.amber { background: var(--amber-soft); color: var(--amber); }
     .mono {
       white-space: pre-wrap;
       word-break: break-word;
@@ -89,41 +113,213 @@
       font-size: 12px;
       line-height: 1.6;
     }
-    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
-    @media (max-width: 1100px) {
-      .layout, .row { grid-template-columns: 1fr; }
+    .hidden { display: none; }
+    .summary { margin-top: 10px; }
+    .hint { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .inline-note {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .card-head h3 { margin: 0; }
+    details {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+    summary { cursor: pointer; font-weight: 700; }
+    @media (max-width: 1200px) {
+      .layout, .row, .row3 { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="page">
     <section class="panel">
-      <h1>运维 Wiki 抽取与入库</h1>
-      <div class="desc">这里专门负责远端 Huawei Wiki 的搜索、候选选择、导入 Source 和 normalize 入库，不承担本地 RAG 查询。</div>
+      <h1>Wiki 检索与入库</h1>
+      <div class="desc">把常用动作收成两个视角：`搜文档` 和 `找作者`。分页由系统维护，你只点上一页 / 下一页。高级分析参数放到折叠区，默认不需要手填。</div>
       <div class="nav">
         <a href="/rag-debug">返回入口</a>
         <a href="/ops-workbench">返回运维工作台</a>
-        <a href="/ops-rag-query">运维 RAG 查询页</a>
         <a href="/ops-imported-wiki">已导入 Wiki 文档</a>
-        <a href="/ops-author-explorer">创建人检索 / 候选专家</a>
+        <a href="/ops-rag-query">RAG 查询页</a>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="docs">搜文档</button>
+        <button class="tab" data-tab="authors">找作者</button>
       </div>
     </section>
 
     <section class="layout">
       <div class="stack">
+        <div class="panel" id="docsPanel">
+          <h2>按关键词搜 Wiki</h2>
+          <div class="section-note">输入问题、概念或排障词，先看相关 Wiki；如果这个主题值得继续找人，可以直接基于当前关键词发现候选作者。</div>
+          <div class="substack">
+            <div class="subpanel">
+              <h3>直接搜索</h3>
+              <div class="row">
+                <div class="field">
+                  <label for="searchQuery">关键词</label>
+                  <input id="searchQuery" value="空闲连接超时时间" />
+                </div>
+                <div class="field">
+                  <label for="searchPageSize">当前页展示文档数</label>
+                  <input id="searchPageSize" type="number" min="1" value="10" />
+                  <div class="hint">只影响这一页显示多少条，不是搜索总量上限。</div>
+                </div>
+              </div>
+              <div class="actions">
+                <button id="searchBtn">搜索 Wiki</button>
+              </div>
+            </div>
+
+            <div class="subpanel">
+              <h3>可选筛选</h3>
+              <div class="inline-note">默认不需要改。只有你要精确搜索、改排序方式时，才展开下面这些设置。</div>
+              <details>
+                <summary>高级搜索参数</summary>
+                <div class="row3" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="searchScope">searchScope</label>
+                    <input id="searchScope" value="ALL" />
+                  </div>
+                  <div class="field">
+                    <label for="isAccurate">isAccurate（true / false）</label>
+                    <input id="isAccurate" value="false" />
+                  </div>
+                  <div class="field">
+                    <label for="sortField">排序字段</label>
+                    <input id="sortField" placeholder="create_time / last_update_time / view_count" />
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="field">
+                    <label for="sortWay">排序方向</label>
+                    <input id="sortWay" placeholder="DESC / ASC" />
+                  </div>
+                  <div class="field">
+                    <label for="sourceTags">导入 tags（逗号分隔）</label>
+                    <input id="sourceTags" value="wiki,运维助手,工作台导入" />
+                  </div>
+                </div>
+              </details>
+            </div>
+
+          </div>
+          <div class="pager hidden" id="searchPager" style="margin-top: 10px;">
+            <button id="searchPrevBtn" class="secondary">上一页</button>
+            <button id="searchNextBtn" class="secondary">下一页</button>
+          </div>
+          <div class="mono summary" id="searchSummaryBox">尚未搜索</div>
+          <div class="list" id="wikiResults" style="margin-top: 12px;"></div>
+          <details class="optional-block">
+            <summary>可选：基于当前关键词发现候选作者</summary>
+            <div class="section-note" style="margin-top: 12px;">这是搜索 Wiki 之后的可选下一步。系统直接使用当前关键词，比如“推理”或“空闲连接超时时间”，从这个主题下找持续出现的作者。</div>
+            <div class="row" style="margin-top: 12px;">
+              <div class="field">
+                <label for="candidateLimit">当前页展示候选人数</label>
+                <input id="candidateLimit" type="number" min="1" value="20" />
+                <div class="hint">只影响候选列表一页展示多少人，不是最多只分析 20 个人。</div>
+              </div>
+              <div class="field">
+                <label>当前主题</label>
+                <div class="inline-note" id="candidateTopicHint">将使用当前关键词：空闲连接超时时间</div>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="candidateBtn" class="amber">发现候选作者</button>
+            </div>
+            <details>
+              <summary>高级分析参数</summary>
+              <div class="row3" style="margin-top: 12px;">
+                <div class="field">
+                  <label for="candidateSeedSize">主题样本文章数</label>
+                  <input id="candidateSeedSize" type="number" min="1" value="30" />
+                </div>
+                <div class="field">
+                  <label for="authorMaxPages">每个作者参与分析的样本页数</label>
+                  <input id="authorMaxPages" type="number" min="1" value="3" />
+                </div>
+                <div class="field">
+                  <label for="authorAnalysisPageSize">每个作者分析时每页抓取数量</label>
+                  <input id="authorAnalysisPageSize" type="number" min="1" value="20" />
+                </div>
+              </div>
+            </details>
+            <div class="pager hidden" id="candidatePager" style="margin-top: 10px;">
+              <button id="candidatePrevBtn" class="secondary">上一页</button>
+              <button id="candidateNextBtn" class="secondary">下一页</button>
+            </div>
+            <div class="mono summary" id="candidateSummaryBox">尚未生成候选作者建议</div>
+            <div class="list" id="candidateResults" style="margin-top: 12px;"></div>
+          </details>
+        </div>
+
+        <div class="panel hidden" id="authorsPanel">
+          <h2>按创建人查文章</h2>
+          <div class="section-note">这里只保留“我已经知道要查谁”的场景。主题发现候选作者已经并回左侧关键词搜索流程。</div>
+          <div class="substack">
+            <div class="subpanel">
+              <h3>按创建人查文章</h3>
+              <div class="section-note">适合你已经知道要查谁，想直接看这个人写过哪些 Wiki。</div>
+              <div class="row">
+                <div class="field">
+                  <label for="authorQuery">创建人（工号 / 账号 / 姓名）</label>
+                  <input id="authorQuery" value="30049962" />
+                </div>
+                <div class="field">
+                  <label for="authorPageSize">当前页展示文章数</label>
+                  <input id="authorPageSize" type="number" min="1" value="10" />
+                  <div class="hint">只影响当前列表一页展示多少篇，不代表作者只有这些文章。</div>
+                </div>
+              </div>
+              <div class="actions">
+                <button id="authorBtn">按创建人搜索文章</button>
+              </div>
+              <div class="pager hidden" id="authorPager" style="margin-top: 10px;">
+                <button id="authorPrevBtn" class="secondary">上一页</button>
+                <button id="authorNextBtn" class="secondary">下一页</button>
+              </div>
+              <div class="mono summary" id="authorSummaryBox">尚未执行</div>
+              <div class="list" id="authorResults" style="margin-top: 12px;"></div>
+              <details>
+                <summary>扩展分析设置</summary>
+                <div class="row" style="margin-top: 12px;">
+                  <div class="field">
+                    <label for="authorMaxPages">统计关键词时额外抽样页数</label>
+                    <input id="authorMaxPages" type="number" min="1" value="3" />
+                    <div class="hint">只影响高频词和活跃度统计，不影响当前页文章列表。</div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
         <div class="panel">
-          <h2>步骤 1：Wiki 搜索与入库</h2>
-          <div class="section-note">先搜候选，再选中并导入。导入成功后可以直接做 normalize，把远端 Wiki 变成本地 knowledge。</div>
-          <div class="row">
-            <div class="field">
-              <label for="searchQuery">search_query</label>
-              <input id="searchQuery" value="空闲连接超时时间" />
-            </div>
-            <div class="field">
-              <label for="pageSize">page_size</label>
-              <input id="pageSize" type="number" value="10" />
-            </div>
+          <h2>共享参数</h2>
+          <div class="field">
+            <label for="apiKey">X-API-Key</label>
+            <input id="apiKey" value="change-me" />
+          </div>
+          <div class="field">
+            <label for="cookie">Wiki Cookie</label>
+            <textarea id="cookie" placeholder="Cookie 过期后可以直接在这里替换"></textarea>
           </div>
           <div class="row">
             <div class="field">
@@ -135,55 +331,7 @@
               <input id="kanbanId" value="17668" />
             </div>
           </div>
-          <div class="row">
-            <div class="field">
-              <label for="searchScope">searchScope</label>
-              <input id="searchScope" value="ALL" />
-            </div>
-            <div class="field">
-              <label for="isAccurate">isAccurate（true / false）</label>
-              <input id="isAccurate" value="false" />
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label for="sortField">sortFiled（默认留空）</label>
-              <input id="sortField" placeholder="create_time / last_update_time / view_count" />
-            </div>
-            <div class="field">
-              <label for="sortWay">sortWay（默认留空）</label>
-              <input id="sortWay" placeholder="DESC / ASC" />
-            </div>
-          </div>
-          <div class="field">
-            <label for="sourceTags">导入 tags（逗号分隔）</label>
-            <input id="sourceTags" value="wiki,运维助手,工作台导入" />
-            <div class="section-note">这些 tag 只是给导入后的 source 打标签，方便后续筛选和管理，不影响 Wiki 抓取本身。</div>
-          </div>
-          <div class="actions">
-            <button id="searchBtn">搜索 Wiki</button>
-            <button id="normalizeBtn" class="secondary">规范化当前 Source</button>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h2>Wiki 搜索结果</h2>
-          <div class="list" id="wikiResults"></div>
-        </div>
-      </div>
-
-      <div class="stack">
-        <div class="panel">
-          <h2>基础参数</h2>
-          <div class="field">
-            <label for="apiKey">X-API-Key</label>
-            <input id="apiKey" value="change-me" />
-          </div>
-          <div class="field">
-            <label for="cookie">Wiki Cookie</label>
-            <textarea id="cookie" placeholder="Cookie 过期后可以直接在这里替换，不需要改配置重启"></textarea>
-          </div>
-          <div class="status" id="statusBox">先搜索并导入 Wiki，再决定是否执行 normalize。</div>
+          <div class="status" id="statusBox">分页由系统维护。高级参数默认收起，不需要每次填。</div>
           <div class="error" id="errorBox"></div>
         </div>
 
@@ -195,8 +343,12 @@
               <div class="mono" id="selectedWiki">未选择</div>
             </div>
             <div class="item">
-              <h3>当前 source</h3>
+              <div class="card-head">
+                <h3>当前 source</h3>
+                <button id="normalizeBtn" class="amber">规范化当前 Source</button>
+              </div>
               <div class="mono" id="currentSource">未导入</div>
+              <div class="hint">先从左侧选中文档并导入为 Source，再在这里做规范化。</div>
             </div>
             <div class="item">
               <h3>当前 knowledge</h3>
@@ -204,13 +356,36 @@
             </div>
           </div>
         </div>
+
+        <div class="panel">
+          <div class="card-head">
+            <h2>候选专家池</h2>
+            <button id="refreshPoolBtn" class="ghost">刷新</button>
+          </div>
+          <div class="section-note">把值得继续跟进的人先收进池子，再决定是否采纳、忽略，或进入画像预览。</div>
+          <div class="list" id="candidatePoolList" style="margin-top: 12px;"></div>
+          <div class="mono summary" id="candidatePreviewBox">未选择候选专家池记录</div>
+        </div>
       </div>
     </section>
   </div>
 
   <script>
-    const state = { selectedWiki: null, source: null, knowledge: null };
+    const state = {
+      tab: "docs",
+      selectedWiki: null,
+      source: null,
+      knowledge: null,
+      searchPage: 1,
+      searchTotalPages: 0,
+      authorPage: 1,
+      authorTotalPages: 0,
+      candidatePage: 1,
+      candidateTotalPages: 0,
+      candidatePool: [],
+    };
     const el = (id) => document.getElementById(id);
+
     function showStatus(message) { el("statusBox").textContent = message; }
     function showError(message) {
       const box = el("errorBox");
@@ -222,12 +397,19 @@
       box.style.display = "block";
       box.textContent = message;
     }
+
+    function setTab(tab) {
+      state.tab = tab;
+      document.querySelectorAll(".tab").forEach((node) => {
+        node.classList.toggle("active", node.dataset.tab === tab);
+      });
+      el("docsPanel").classList.toggle("hidden", tab !== "docs");
+      el("authorsPanel").classList.toggle("hidden", tab !== "authors");
+    }
+
     async function api(path, options = {}) {
       const headers = Object.assign(
-        {
-          "Content-Type": "application/json",
-          "X-API-Key": el("apiKey").value.trim(),
-        },
+        { "Content-Type": "application/json", "X-API-Key": el("apiKey").value.trim() },
         options.headers || {}
       );
       const response = await fetch(path, Object.assign({}, options, { headers }));
@@ -236,123 +418,370 @@
       if (!response.ok) throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
       return data;
     }
-    function wikiPayload() {
-      return { cookie: el("cookie").value.trim() || null };
+
+    function sharedPayload() {
+      return {
+        cookie: el("cookie").value.trim() || null,
+        wiki_sn: el("wikiSn").value.trim() || null,
+        kanban_id: el("kanbanId").value.trim() || null,
+      };
     }
+
     function currentTags() {
       return el("sourceTags").value.split(",").map((item) => item.trim()).filter(Boolean);
     }
+
     function renderSelectedState() {
       el("selectedWiki").textContent = state.selectedWiki ? JSON.stringify(state.selectedWiki, null, 2) : "未选择";
       el("currentSource").textContent = state.source ? JSON.stringify(state.source, null, 2) : "未导入";
       el("currentKnowledge").textContent = state.knowledge ? JSON.stringify(state.knowledge, null, 2) : "未规范化";
+      el("normalizeBtn").disabled = !(state.source && state.source.source_id);
     }
-    function renderWikiResults(items) {
+
+    function syncCandidateTopicHint() {
+      const query = el("searchQuery").value.trim() || "未填写关键词";
+      el("candidateTopicHint").textContent = `将使用当前关键词：${query}`;
+    }
+
+    function syncPager(pagerId, prevId, nextId, currentPage, totalPages) {
+      const hasMultiplePages = (totalPages || 0) > 1;
+      el(pagerId).classList.toggle("hidden", !hasMultiplePages);
+      el(prevId).disabled = !hasMultiplePages || currentPage <= 1;
+      el(nextId).disabled = !hasMultiplePages || currentPage >= totalPages;
+    }
+
+    function renderWikiCard(item, container, items, source) {
+      const card = document.createElement("div");
+      card.className = "item";
+      if (state.selectedWiki && state.selectedWiki.sn === item.sn) card.classList.add("selected");
+      card.innerHTML = `
+        <h3>${item.title || "待补充"}</h3>
+        <div class="meta">sn: ${item.sn || ""}<br/>domain_id: ${item.domain_id || ""} | kanban_id: ${item.kanban_id || ""}<br/>created_by: ${item.created_by_name || "待补充"} ${item.created_by_account || ""}<br/>created_at: ${item.created_at || ""}<br/>updated_at: ${item.updated_at || ""}</div>
+        <div class="chips">
+          <span class="chip">${item.domain_title || "待补充"}</span>
+          <span class="chip">${item.kanban_title || "待补充"}</span>
+        </div>
+        <div class="meta" style="margin-top:8px;">${item.summary || ""}</div>
+        <div class="actions">
+          <button data-action="select">选中</button>
+          <button data-action="import" class="secondary">导入为 Source</button>
+        </div>
+      `;
+      card.querySelector('[data-action="select"]').onclick = () => {
+        state.selectedWiki = item;
+        renderSelectedState();
+        if (source === "search") renderSearchResults(items);
+        if (source === "author") renderAuthorResults(items);
+        showStatus(`已选中 Wiki: ${item.title || item.sn}`);
+      };
+      card.querySelector('[data-action="import"]').onclick = async () => {
+        state.selectedWiki = item;
+        renderSelectedState();
+        await importSelectedWiki();
+        if (source === "search") renderSearchResults(items);
+        if (source === "author") renderAuthorResults(items);
+      };
+      container.appendChild(card);
+    }
+
+    function renderSearchResults(items) {
       const container = el("wikiResults");
       container.innerHTML = "";
       if (!items.length) {
         container.innerHTML = '<div class="item"><div class="meta">没有返回 Wiki 结果。</div></div>';
         return;
       }
-      items.forEach((item) => {
+      items.forEach((item) => renderWikiCard(item, container, items, "search"));
+    }
+
+    function renderAuthorResults(items) {
+      const container = el("authorResults");
+      container.innerHTML = "";
+      if (!items.length) {
+        container.innerHTML = '<div class="item"><div class="meta">没有找到该创建人的文章。</div></div>';
+        return;
+      }
+      items.forEach((item) => renderWikiCard(item, container, items, "author"));
+    }
+
+    function renderCandidates(data) {
+      state.candidateTotalPages = data.total_pages || 0;
+      syncPager("candidatePager", "candidatePrevBtn", "candidateNextBtn", data.page || 1, state.candidateTotalPages);
+      el("candidateSummaryBox").textContent = JSON.stringify({
+        topic_query: data.topic_query,
+        total: data.total,
+        page: data.page,
+        total_pages: data.total_pages,
+        page_size: data.page_size,
+      }, null, 2);
+      const container = el("candidateResults");
+      container.innerHTML = "";
+      if (!data.candidates || !data.candidates.length) {
+        container.innerHTML = '<div class="item"><div class="meta">当前页没有候选作者结果。</div></div>';
+        return;
+      }
+      data.candidates.forEach((candidate) => {
+        const relatedArticles = (candidate.related_articles || []).map((item) => `<li>${item.title || "待补充"}</li>`).join("");
         const card = document.createElement("div");
         card.className = "item";
-        if (state.selectedWiki && state.selectedWiki.sn === item.sn) {
-          card.classList.add("selected");
-        }
         card.innerHTML = `
-          <h3>${item.title || "待补充"}</h3>
-          <div class="meta">sn: ${item.sn || ""}<br/>domain_id: ${item.domain_id || ""} | kanban_id: ${item.kanban_id || ""}<br/>created_by: ${item.created_by_name || "待补充"} ${item.created_by_account || ""}<br/>created_at: ${item.created_at || ""}<br/>updated_at: ${item.updated_at || ""}</div>
+          <h3>${candidate.created_by_name || "待补充"} ${candidate.created_by_account || ""}</h3>
           <div class="chips">
-            <span class="chip">${item.domain_title || "待补充"}</span>
-            <span class="chip">${item.kanban_title || "待补充"}</span>
+            <span class="chip amber">Wiki 总命中: ${candidate.article_count}</span>
+            <span class="chip">主题集中度: ${candidate.topic_concentration}</span>
           </div>
-          <div class="meta" style="margin-top:8px;">${item.summary || ""}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>建议：</strong>${candidate.recommendation || ""}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>可能 skill：</strong>${(candidate.possible_skills || []).join("、") || "无"}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>依据：</strong>${(candidate.evidence || []).join("；") || "无"}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>相关文章：</strong><ul>${relatedArticles || "<li>无</li>"}</ul></div>
           <div class="actions">
-            <button data-action="select">选中</button>
-            <button class="secondary" data-action="import">导入为 Source</button>
+            <button data-action="save">加入候选池</button>
+            <button data-action="inspect" class="ghost">按作者查看文章</button>
           </div>
         `;
-        card.querySelector('[data-action="select"]').onclick = () => {
-          state.selectedWiki = item;
-          renderSelectedState();
-          renderWikiResults(items);
-          showStatus(`已选中 Wiki: ${item.title || item.sn}`);
-        };
-        card.querySelector('[data-action="import"]').onclick = async () => {
-          state.selectedWiki = item;
-          renderSelectedState();
-          await importSelectedWiki();
-          renderWikiResults(items);
-        };
+        card.querySelector('[data-action="save"]').onclick = () => saveCandidate(candidate).catch((err) => {
+          showError(err.message);
+          showStatus("保存候选专家失败");
+        });
+        card.querySelector('[data-action="inspect"]').onclick = () => inspectCandidateAuthor(candidate).catch((err) => {
+          showError(err.message);
+          showStatus("按作者查看文章失败");
+        });
         container.appendChild(card);
       });
     }
+
+    function renderCandidatePool(items) {
+      state.candidatePool = items || [];
+      const container = el("candidatePoolList");
+      container.innerHTML = "";
+      if (!state.candidatePool.length) {
+        container.innerHTML = '<div class="item"><div class="meta">候选专家池还是空的。先从左侧候选作者结果里加入。</div></div>';
+        return;
+      }
+      state.candidatePool.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item";
+        card.innerHTML = `
+          <h3>${item.created_by_name || "待补充"} ${item.created_by_account || ""}</h3>
+          <div class="chips">
+            <span class="chip amber">${item.status}</span>
+            <span class="chip">${item.topic_query || "未标注主题"}</span>
+          </div>
+          <div class="meta" style="margin-top: 8px;"><strong>建议：</strong>${item.recommendation || ""}</div>
+          <div class="meta" style="margin-top: 8px;"><strong>可能 skill：</strong>${(item.possible_skills || []).join("、") || "无"}</div>
+          <div class="actions">
+            <button data-action="preview" class="ghost">画像预览</button>
+            <button data-action="accept">采纳</button>
+            <button data-action="ignore" class="secondary">忽略</button>
+          </div>
+        `;
+        card.querySelector('[data-action="preview"]').onclick = () => previewCandidatePoolItem(item.candidate_id).catch((err) => {
+          showError(err.message);
+          showStatus("画像预览失败");
+        });
+        card.querySelector('[data-action="accept"]').onclick = () => updateCandidatePoolStatus(item.candidate_id, "已采纳").catch((err) => {
+          showError(err.message);
+          showStatus("更新候选状态失败");
+        });
+        card.querySelector('[data-action="ignore"]').onclick = () => updateCandidatePoolStatus(item.candidate_id, "已忽略").catch((err) => {
+          showError(err.message);
+          showStatus("更新候选状态失败");
+        });
+        container.appendChild(card);
+      });
+    }
+
     async function searchWiki() {
       showError("");
-      showStatus("正在搜索 Wiki...");
-      const payload = Object.assign(wikiPayload(), {
-        search_query: el("searchQuery").value.trim(),
-        page: 1,
-        page_size: Number(el("pageSize").value || 10),
-        search_scope: el("searchScope").value.trim() || "ALL",
-        is_accurate: String(el("isAccurate").value).trim().toLowerCase() === "true",
-        wiki_sn: el("wikiSn").value.trim() || null,
-        kanban_id: el("kanbanId").value.trim() || null,
-        sort_field: el("sortField").value.trim() || null,
-        sort_way: el("sortWay").value.trim() || null,
-      });
+      showStatus("正在执行关键词搜索...");
       const data = await api("/api/wiki/search", {
+        method: "POST",
+        body: JSON.stringify(Object.assign(sharedPayload(), {
+          search_query: el("searchQuery").value.trim(),
+          page: state.searchPage,
+          page_size: Number(el("searchPageSize").value || 10),
+          search_scope: el("searchScope").value.trim() || "ALL",
+          is_accurate: String(el("isAccurate").value).trim().toLowerCase() === "true",
+          sort_field: el("sortField").value.trim() || null,
+          sort_way: el("sortWay").value.trim() || null,
+        })),
+      });
+      state.searchTotalPages = data.total_pages || 0;
+      syncPager("searchPager", "searchPrevBtn", "searchNextBtn", data.page || 1, state.searchTotalPages);
+      el("searchSummaryBox").textContent = JSON.stringify({
+        total: data.total,
+        page: data.page,
+        total_pages: data.total_pages,
+        page_size: data.page_size,
+      }, null, 2);
+      renderSearchResults(data.items || []);
+      showStatus(`关键词搜索完成：第 ${data.page} / ${data.total_pages || 1} 页，总计 ${data.total} 条。`);
+    }
+
+    async function runAuthorSearch() {
+      showError("");
+      showStatus("正在按创建人搜索文章...");
+      const data = await api("/api/wiki/author/search", {
+        method: "POST",
+        body: JSON.stringify(Object.assign(sharedPayload(), {
+          author_query: el("authorQuery").value.trim(),
+          page: state.authorPage,
+          page_size: Number(el("authorPageSize").value || 10),
+          max_pages: Number(el("authorMaxPages").value || 3),
+        })),
+      });
+      state.authorTotalPages = data.stats.total_pages || 0;
+      syncPager("authorPager", "authorPrevBtn", "authorNextBtn", data.stats.current_page || 1, state.authorTotalPages);
+      el("authorSummaryBox").textContent = JSON.stringify(data.stats, null, 2);
+      renderAuthorResults(data.items || []);
+      showStatus(`创建人搜索完成：第 ${data.stats.current_page} / ${data.stats.total_pages || 1} 页，Wiki 总命中 ${data.stats.total_records} 条。`);
+    }
+
+    async function runCandidates() {
+      showError("");
+      showStatus("正在生成候选作者建议...");
+      const data = await api("/api/wiki/author/candidates", {
+        method: "POST",
+        body: JSON.stringify(Object.assign(sharedPayload(), {
+          topic_query: el("searchQuery").value.trim(),
+          page: state.candidatePage,
+          page_size: Number(el("candidateSeedSize").value || 30),
+          candidate_limit: Number(el("candidateLimit").value || 20),
+          author_page_size: Number(el("authorAnalysisPageSize").value || 20),
+          author_max_pages: Number(el("authorMaxPages").value || 3),
+        })),
+      });
+      renderCandidates(data);
+      showStatus(`候选作者建议完成：第 ${data.page} / ${data.total_pages || 1} 页，共 ${data.total} 位候选作者。`);
+    }
+
+    async function saveCandidate(candidate) {
+      const payload = Object.assign({ topic_query: el("searchQuery").value.trim() }, candidate);
+      const data = await api("/api/candidate-pool/save", {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      renderWikiResults(data.items || []);
-      showStatus(`Wiki 搜索完成，共返回 ${data.total || 0} 条结果。`);
+      showStatus(`已加入候选专家池：${data.created_by_name || data.created_by_account}`);
+      await refreshCandidatePool();
+      await previewCandidatePoolItem(data.candidate_id);
     }
+
+    async function refreshCandidatePool() {
+      const data = await api("/api/candidate-pool/list");
+      renderCandidatePool(data.items || []);
+    }
+
+    async function updateCandidatePoolStatus(candidateId, status) {
+      await api(`/api/candidate-pool/${candidateId}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      });
+      showStatus(`候选专家状态已更新为：${status}`);
+      await refreshCandidatePool();
+    }
+
+    async function previewCandidatePoolItem(candidateId) {
+      const data = await api(`/api/candidate-pool/${candidateId}/preview`);
+      el("candidatePreviewBox").textContent = JSON.stringify(data, null, 2);
+      showStatus(`已生成画像预览：${data.candidate.created_by_name || data.candidate.created_by_account}`);
+    }
+
+    async function inspectCandidateAuthor(candidate) {
+      setTab("authors");
+      el("authorQuery").value = candidate.created_by_account || candidate.created_by_name || "";
+      state.authorPage = 1;
+      await runAuthorSearch();
+    }
+
     async function importSelectedWiki() {
       if (!state.selectedWiki) throw new Error("请先选中一条 Wiki。");
       showError("");
       showStatus("正在导入选中 Wiki...");
-      const payload = Object.assign(wikiPayload(), {
-        source_type: "wiki_api",
-        fetch_from_wiki: true,
-        wiki_sn: state.selectedWiki.sn,
-        domain_id: state.selectedWiki.domain_id,
-        kanban_id: state.selectedWiki.kanban_id,
-        owner: state.selectedWiki.created_by_name || state.selectedWiki.created_by_account || "待补充",
-        tags: currentTags(),
-        skip_if_exists: true,
-        overwrite_if_exists: false,
-        metadata: {
-          created_by_name: state.selectedWiki.created_by_name || "",
-          created_by_account: state.selectedWiki.created_by_account || "",
-          search_query: el("searchQuery").value.trim(),
-        },
-      });
       state.source = await api("/api/source/import", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(Object.assign(sharedPayload(), {
+          source_type: "wiki_api",
+          fetch_from_wiki: true,
+          wiki_sn: state.selectedWiki.sn,
+          domain_id: state.selectedWiki.domain_id,
+          kanban_id: state.selectedWiki.kanban_id,
+          owner: state.selectedWiki.created_by_name || state.selectedWiki.created_by_account || "待补充",
+          tags: currentTags(),
+          skip_if_exists: true,
+          overwrite_if_exists: false,
+          metadata: {
+            created_by_name: state.selectedWiki.created_by_name || "",
+            created_by_account: state.selectedWiki.created_by_account || "",
+            search_query: el("searchQuery").value.trim(),
+          },
+        })),
       });
       renderSelectedState();
       showStatus(`Wiki 已导入 source: ${state.source.source_id}`);
     }
+
     async function normalizeCurrentSource() {
       if (!state.source || !state.source.source_id) throw new Error("请先导入 source。");
       showError("");
       showStatus("正在规范化当前 source...");
       state.knowledge = await api("/api/knowledge/normalize", {
         method: "POST",
-        body: JSON.stringify({
-          source_id: state.source.source_id,
-          use_ai: false,
-        }),
+        body: JSON.stringify({ source_id: state.source.source_id, use_ai: false }),
       });
       renderSelectedState();
       showStatus(`knowledge 已生成: ${state.knowledge.doc_id}`);
     }
-    el("searchBtn").onclick = () => searchWiki().catch((err) => { showError(err.message); showStatus("Wiki 搜索失败"); });
+
+    function clampPage(next, totalPages) {
+      if (next < 1) return 1;
+      if (totalPages && next > totalPages) return totalPages;
+      return next;
+    }
+
+    function bindPagination(buttonId, computeNext, runner) {
+      el(buttonId).onclick = () => {
+        computeNext();
+        runner().catch((err) => { showError(err.message); showStatus("分页加载失败"); });
+      };
+    }
+
+    document.querySelectorAll(".tab").forEach((node) => {
+      node.onclick = () => setTab(node.dataset.tab);
+    });
+
+    el("searchQuery").addEventListener("input", syncCandidateTopicHint);
+
+    el("searchBtn").onclick = () => {
+      state.searchPage = 1;
+      searchWiki().catch((err) => { showError(err.message); showStatus("关键词搜索失败"); });
+    };
+    bindPagination("searchPrevBtn", () => { state.searchPage = clampPage(state.searchPage - 1, state.searchTotalPages); }, searchWiki);
+    bindPagination("searchNextBtn", () => { state.searchPage = clampPage(state.searchPage + 1, state.searchTotalPages); }, searchWiki);
     el("normalizeBtn").onclick = () => normalizeCurrentSource().catch((err) => { showError(err.message); showStatus("规范化失败"); });
+
+    el("authorBtn").onclick = () => {
+      state.authorPage = 1;
+      runAuthorSearch().catch((err) => { showError(err.message); showStatus("创建人搜索失败"); });
+    };
+    bindPagination("authorPrevBtn", () => { state.authorPage = clampPage(state.authorPage - 1, state.authorTotalPages); }, runAuthorSearch);
+    bindPagination("authorNextBtn", () => { state.authorPage = clampPage(state.authorPage + 1, state.authorTotalPages); }, runAuthorSearch);
+
+    el("candidateBtn").onclick = () => {
+      state.candidatePage = 1;
+      runCandidates().catch((err) => { showError(err.message); showStatus("候选作者建议失败"); });
+    };
+    bindPagination("candidatePrevBtn", () => { state.candidatePage = clampPage(state.candidatePage - 1, state.candidateTotalPages); }, runCandidates);
+    bindPagination("candidateNextBtn", () => { state.candidatePage = clampPage(state.candidatePage + 1, state.candidateTotalPages); }, runCandidates);
+    el("refreshPoolBtn").onclick = () => refreshCandidatePool().catch((err) => { showError(err.message); showStatus("刷新候选专家池失败"); });
+
     renderSelectedState();
+    syncPager("searchPager", "searchPrevBtn", "searchNextBtn", 1, 0);
+    syncPager("authorPager", "authorPrevBtn", "authorNextBtn", 1, 0);
+    syncPager("candidatePager", "candidatePrevBtn", "candidateNextBtn", 1, 0);
+    setTab("docs");
+    syncCandidateTopicHint();
+    refreshCandidatePool().catch(() => {});
   </script>
 </body>
 </html>

@@ -109,3 +109,21 @@ class RAGQueryLog:
     latency_ms: int
     created_at: str
     debug_info: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CandidateExpertRecord:
+    candidate_id: str
+    topic_query: str
+    created_by_name: str
+    created_by_account: str
+    article_count: int
+    latest_updated_at: str
+    possible_skills: List[str] = field(default_factory=list)
+    evidence: List[str] = field(default_factory=list)
+    recommendation: str = ""
+    related_articles: List[Dict[str, Any]] = field(default_factory=list)
+    status: str = "待确认"
+    notes: str = ""
+    created_at: str = ""
+    updated_at: str = ""

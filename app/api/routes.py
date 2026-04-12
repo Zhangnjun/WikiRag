@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from app.api.deps import require_api_key
 from app.core.exceptions import AppError
 from app.dependencies import (
+    get_candidate_expert_service,
     get_expert_profile_service,
     get_internal_ai_client,
     get_internal_embedding_client,
@@ -44,6 +45,11 @@ from app.schemas.wiki import (
     WikiAuthorCandidateResponse,
     WikiAuthorSearchRequest,
     WikiAuthorSearchResponse,
+    CandidateExpertItemResponse,
+    CandidateExpertListResponse,
+    CandidateExpertPreviewResponse,
+    CandidateExpertSaveRequest,
+    CandidateExpertStatusUpdateRequest,
     WikiRecommendExpandedRequest,
     WikiRecommendExpandedResponse,
     WikiRecommendRequest,
@@ -100,9 +106,9 @@ def ops_imported_wiki_page() -> HTMLResponse:
     return HTMLResponse(_read_static_html("ops_imported_wiki.html"))
 
 
-@public_router.get("/ops-author-explorer", response_class=HTMLResponse, include_in_schema=False)
-def ops_author_explorer_page() -> HTMLResponse:
-    return HTMLResponse(_read_static_html("ops_author_explorer.html"))
+@public_router.get("/ops-author-explorer", include_in_schema=False)
+def ops_author_explorer_page() -> RedirectResponse:
+    return RedirectResponse(url="/ops-wiki-ingest", status_code=307)
 
 
 @public_router.get("/ops-skill-profile", response_class=HTMLResponse, include_in_schema=False)
@@ -207,6 +213,7 @@ def wiki_search(request: WikiSearchRequest) -> WikiSearchResponse:
 def wiki_author_search(request: WikiAuthorSearchRequest) -> WikiAuthorSearchResponse:
     payload = get_wiki_service().search_by_author(
         author_query=request.author_query,
+        page=request.page,
         page_size=request.page_size,
         max_pages=request.max_pages,
         wiki_sn=request.wiki_sn,
@@ -221,6 +228,7 @@ def wiki_author_search(request: WikiAuthorSearchRequest) -> WikiAuthorSearchResp
 def wiki_author_candidates(request: WikiAuthorCandidateRequest) -> WikiAuthorCandidateResponse:
     payload = get_wiki_service().suggest_candidates_by_topic(
         topic_query=request.topic_query,
+        page=request.page,
         page_size=request.page_size,
         candidate_limit=request.candidate_limit,
         author_page_size=request.author_page_size,
@@ -231,6 +239,42 @@ def wiki_author_candidates(request: WikiAuthorCandidateRequest) -> WikiAuthorCan
         trace_id=new_trace_id(),
     )
     return WikiAuthorCandidateResponse(**payload)
+
+
+@router.post("/api/candidate-pool/save", response_model=CandidateExpertItemResponse)
+def save_candidate_pool_item(request: CandidateExpertSaveRequest) -> CandidateExpertItemResponse:
+    record = get_candidate_expert_service().save_candidate(request.dict())
+    return CandidateExpertItemResponse(**record.__dict__)
+
+
+@router.get("/api/candidate-pool/list", response_model=CandidateExpertListResponse)
+def list_candidate_pool_items(
+    status: Optional[str] = None,
+    topic_query: Optional[str] = None,
+) -> CandidateExpertListResponse:
+    items = get_candidate_expert_service().list_candidates(status=status, topic_query=topic_query)
+    return CandidateExpertListResponse(
+        items=[CandidateExpertItemResponse(**item.__dict__) for item in items],
+        total=len(items),
+    )
+
+
+@router.post("/api/candidate-pool/{candidate_id}/status", response_model=CandidateExpertItemResponse)
+def update_candidate_pool_item_status(
+    candidate_id: str,
+    request: CandidateExpertStatusUpdateRequest,
+) -> CandidateExpertItemResponse:
+    record = get_candidate_expert_service().update_status(candidate_id, request.status, notes=request.notes)
+    return CandidateExpertItemResponse(**record.__dict__)
+
+
+@router.get("/api/candidate-pool/{candidate_id}/preview", response_model=CandidateExpertPreviewResponse)
+def preview_candidate_pool_item(candidate_id: str) -> CandidateExpertPreviewResponse:
+    payload = get_candidate_expert_service().preview_candidate_profile(candidate_id)
+    return CandidateExpertPreviewResponse(
+        candidate=CandidateExpertItemResponse(**payload["candidate"].__dict__),
+        profile_preview=payload["profile_preview"],
+    )
 
 
 @router.post("/api/wiki/recommend", response_model=WikiRecommendResponse)

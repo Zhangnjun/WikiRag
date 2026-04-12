@@ -210,7 +210,7 @@ class WikiService:
         sort_way: Optional[str] = None,
         cookie_override: Optional[str] = None,
         trace_id: str = "",
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         trace_id = trace_id or new_trace_id()
         payload = copy.deepcopy(self.settings.default_search_payload)
         payload["searchKey"] = query
@@ -238,7 +238,8 @@ class WikiService:
             trace_id=trace_id,
             step="wiki_search",
         )
-        results = response_data.get("data", {}).get("result", [])
+        data = response_data.get("data", {})
+        results = data.get("result", [])
         if not isinstance(results, list):
             log_event(
                 LOG,
@@ -250,6 +251,12 @@ class WikiService:
                 top_level_keys=list(response_data.keys()),
             )
             raise AppError("Wiki search response missing data.result", 502)
+        meta = {
+            "total_records": int(data.get("total_records") or len(results)),
+            "total_pages": int(data.get("total_pages") or 0),
+            "current_page": int(data.get("current_page") or page),
+            "page_size": int(data.get("page_size") or page_size),
+        }
         log_event(
             LOG,
             trace_id=trace_id,
@@ -260,8 +267,10 @@ class WikiService:
             page_size=page_size,
             search_scope=search_scope,
             result_count=len(results),
+            total_records=meta["total_records"],
+            total_pages=meta["total_pages"],
         )
-        return results
+        return {"items": results, "meta": meta}
 
     def fetch_detail(
         self,
@@ -337,7 +346,7 @@ class WikiService:
         trace_id: str = "",
     ) -> Dict[str, Any]:
         trace_id = trace_id or new_trace_id()
-        items = self.search(
+        search_payload = self.search(
             query,
             page=page,
             page_size=page_size,
@@ -351,6 +360,8 @@ class WikiService:
             cookie_override=cookie_override,
             trace_id=trace_id,
         )
+        items = search_payload["items"]
+        meta = search_payload["meta"]
         normalized = []
         field_type_summary: Dict[str, Dict[str, int]] = {
             "title": {},
@@ -420,11 +431,18 @@ class WikiService:
             field_type_summary=field_type_summary,
             top_items=top_items,
         )
-        return {"items": normalized, "total": len(normalized), "page": page, "page_size": page_size}
+        return {
+            "items": normalized,
+            "total": meta["total_records"],
+            "total_pages": meta["total_pages"],
+            "page": meta["current_page"],
+            "page_size": meta["page_size"],
+        }
 
     def search_by_author(
         self,
         author_query: str,
+        page: int = 1,
         page_size: int = 10,
         max_pages: int = 3,
         wiki_sn: Optional[str] = None,
@@ -433,11 +451,26 @@ class WikiService:
         trace_id: str = "",
     ) -> Dict[str, Any]:
         trace_id = trace_id or new_trace_id()
-        normalized_items: List[Dict[str, Any]] = []
-        for page in range(1, max_pages + 1):
+        current_page_payload = self.normalize_search_results(
+            author_query,
+            page=page,
+            page_size=page_size,
+            search_scope="AUTHOR",
+            is_accurate=False,
+            wiki_sn=wiki_sn,
+            kanban_id=kanban_id,
+            cookie_override=cookie_override,
+            trace_id=trace_id,
+        )
+
+        total_pages = current_page_payload.get("total_pages") or 0
+        pages_to_fetch = min(max(max_pages, 1), total_pages or max_pages)
+        sampled_items: List[Dict[str, Any]] = []
+        fetched_records = 0
+        for sample_page in range(1, pages_to_fetch + 1):
             payload = self.normalize_search_results(
                 author_query,
-                page=page,
+                page=sample_page,
                 page_size=page_size,
                 search_scope="AUTHOR",
                 is_accurate=False,
@@ -447,28 +480,36 @@ class WikiService:
                 trace_id=trace_id,
             )
             page_items = payload["items"]
-            normalized_items.extend(page_items)
+            sampled_items.extend(page_items)
+            fetched_records += len(page_items)
             if len(page_items) < page_size:
                 break
 
-        deduped = self._dedupe_items(normalized_items)
+        deduped = self._dedupe_items(sampled_items)
         keyword_text = "\n".join(
             f"{item['title']} {item['summary']} {item['kanban_title']}" for item in deduped
         )
         stats = {
             "author_query": author_query,
-            "article_count": len(deduped),
+            "article_count": current_page_payload.get("total", 0),
+            "total_records": current_page_payload.get("total", 0),
+            "fetched_records": fetched_records,
+            "deduped_records": len(deduped),
+            "fetched_pages": pages_to_fetch,
+            "total_pages": total_pages,
+            "current_page": current_page_payload.get("page", page),
             "latest_updated_at": max((item["updated_at"] for item in deduped), default=""),
             "wiki_titles": [item["title"] for item in deduped[:10]],
             "high_frequency_keywords": extract_keywords(keyword_text, limit=8) if keyword_text else [],
         }
-        return {"stats": stats, "items": deduped}
+        return {"stats": stats, "items": current_page_payload["items"]}
 
     def suggest_candidates_by_topic(
         self,
         topic_query: str,
-        page_size: int = 10,
-        candidate_limit: int = 5,
+        page: int = 1,
+        page_size: int = 30,
+        candidate_limit: int = 20,
         author_page_size: int = 20,
         author_max_pages: int = 3,
         wiki_sn: Optional[str] = None,
@@ -495,11 +536,12 @@ class WikiService:
                 continue
             author_counter[key] += 1
 
-        candidates = []
-        for (created_by_name, created_by_account), _ in author_counter.most_common(candidate_limit):
+        all_candidates = []
+        for created_by_name, created_by_account in author_counter.keys():
             author_query = created_by_account or created_by_name
             author_payload = self.search_by_author(
                 author_query=author_query,
+                page=1,
                 page_size=author_page_size,
                 max_pages=author_max_pages,
                 wiki_sn=wiki_sn,
@@ -508,34 +550,52 @@ class WikiService:
                 trace_id=trace_id,
             )
             author_items = author_payload["items"]
-            keywords = author_payload["stats"]["high_frequency_keywords"]
+            stats = author_payload["stats"]
+            keywords = stats["high_frequency_keywords"]
             topic_hits = sum(1 for keyword in keywords if keyword and keyword.lower() in topic_query.lower())
             topic_concentration = round(topic_hits / max(len(keywords), 1), 2) if keywords else 0.0
             evidence = [
-                f"主题搜索命中 {author_counter[(created_by_name, created_by_account)]} 篇",
-                f"创建人文章总数 {author_payload['stats']['article_count']} 篇",
+                f"主题关键词命中 {author_counter[(created_by_name, created_by_account)]} 篇",
+                f"Wiki 总命中 {stats['total_records']} 篇",
+                f"本次分析抓取 {stats['fetched_records']} 篇 / 去重后 {stats['deduped_records']} 篇",
             ]
-            if author_payload["stats"]["latest_updated_at"]:
-                evidence.append(f"最近更新时间 {author_payload['stats']['latest_updated_at']}")
+            if stats["latest_updated_at"]:
+                evidence.append(f"最近更新时间 {stats['latest_updated_at']}")
             if keywords:
                 evidence.append("高频关键词: " + "、".join(keywords[:6]))
-            candidates.append(
+            all_candidates.append(
                 {
                     "created_by_name": created_by_name,
                     "created_by_account": created_by_account,
-                    "article_count": author_payload["stats"]["article_count"],
-                    "latest_updated_at": author_payload["stats"]["latest_updated_at"],
+                    "article_count": stats["total_records"],
+                    "latest_updated_at": stats["latest_updated_at"],
                     "possible_skills": keywords[:6],
                     "evidence": evidence,
                     "topic_concentration": topic_concentration,
                     "recommendation": self._build_candidate_recommendation(
-                        article_count=author_payload["stats"]["article_count"],
+                        article_count=stats["total_records"],
                         topic_concentration=topic_concentration,
                     ),
                     "related_articles": author_items[:5],
                 }
             )
-        return {"topic_query": topic_query, "candidates": candidates}
+
+        all_candidates.sort(
+            key=lambda item: (item["article_count"], item["topic_concentration"], item["latest_updated_at"]),
+            reverse=True,
+        )
+        total = len(all_candidates)
+        total_pages = (total + candidate_limit - 1) // candidate_limit if candidate_limit else 0
+        start = max(page - 1, 0) * candidate_limit
+        end = start + candidate_limit
+        return {
+            "topic_query": topic_query,
+            "total": total,
+            "total_pages": total_pages,
+            "page": page,
+            "page_size": candidate_limit,
+            "candidates": all_candidates[start:end],
+        }
 
     @staticmethod
     def _summarize_search_payload(payload: Dict[str, Any]) -> Dict[str, Any]:

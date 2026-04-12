@@ -30,18 +30,13 @@
         var(--bg);
     }
     .page { max-width: 1200px; margin: 0 auto; padding: 32px 20px 48px; }
-    .hero, .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-    }
+    .hero, .card { background: var(--panel); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow); }
     .hero { padding: 24px; margin-bottom: 22px; }
     .hero h1 { margin: 0 0 10px; font-size: 34px; }
     .hero p { margin: 0; color: var(--muted); line-height: 1.75; }
     .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
     .card { padding: 22px; }
     .card h2 { margin: 0 0 10px; font-size: 24px; }
     .card p { margin: 0 0 14px; color: var(--muted); line-height: 1.75; min-height: 84px; }
@@ -50,34 +45,19 @@
     .chip.blue { background: var(--blue-soft); color: var(--blue); }
     .chip.mint { background: var(--mint-soft); color: var(--mint); }
     .chip.amber { background: var(--amber-soft); color: var(--amber); }
-    .button {
-      display: inline-block;
-      text-decoration: none;
-      padding: 10px 16px;
-      border-radius: 999px;
-      font-weight: 700;
-      color: #fff;
-    }
+    .button { display: inline-block; text-decoration: none; padding: 10px 16px; border-radius: 999px; font-weight: 700; color: #fff; }
     .button.blue { background: var(--blue); }
     .button.mint { background: var(--mint); }
     .button.amber { background: var(--amber); }
-    .note {
-      margin-top: 18px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    @media (max-width: 980px) {
-      .grid { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 28px; }
-      .card p { min-height: 0; }
-    }
+    .note { margin-top: 18px; font-size: 13px; color: var(--muted); }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 28px; } .card p { min-height: 0; } }
   </style>
 </head>
 <body>
   <div class="page">
     <section class="hero">
       <h1>运维工作台</h1>
-      <p>运维侧不要把所有能力堆在一个页面里。当前拆成五个独立入口：`Wiki 抽取与入库`、`已导入 Wiki 文档`、`RAG 查询`、`人员 Skill 画像`、`创建人检索/候选专家`。你先选场景，再进入对应工作流。</p>
+      <p>工作流收敛成四块：统一 Wiki 检索与入库、已导入文档查看、RAG 查询、人员 Skill 画像。关键词搜索、创建人搜索和候选作者发现已经合并到同一个 Wiki 页面里。</p>
       <div class="nav">
         <a href="/rag-debug">返回入口</a>
         <a href="/career-workbench">个人搜索工作台</a>
@@ -87,14 +67,14 @@
 
     <section class="grid">
       <article class="card">
-        <h2>Wiki 抽取与入库</h2>
-        <p>从 Huawei Wiki 搜索候选文档，选中后导入 Source，并继续做 normalize，形成可检索的本地 knowledge。</p>
+        <h2>Wiki 检索 / 创建人 / 候选作者</h2>
+        <p>在一个页面里完成三类操作：按关键词搜 Wiki、按创建人搜文章、按主题关键词筛候选作者，并支持直接导入 Source 与 normalize。</p>
         <div class="chips">
-          <span class="chip blue">搜索 Wiki</span>
-          <span class="chip blue">导入 Source</span>
-          <span class="chip blue">normalize</span>
+          <span class="chip blue">关键词搜索</span>
+          <span class="chip blue">AUTHOR 检索</span>
+          <span class="chip blue">候选作者发现</span>
         </div>
-        <a class="button blue" href="/ops-wiki-ingest">进入 Wiki 抽取页</a>
+        <a class="button blue" href="/ops-wiki-ingest">进入统一 Wiki 检索页</a>
       </article>
 
       <article class="card">
@@ -129,22 +109,9 @@
         </div>
         <a class="button amber" href="/ops-skill-profile">进入 Skill 画像页</a>
       </article>
-
-      <article class="card">
-        <h2>创建人检索 / 候选专家</h2>
-        <p>直接使用 `searchScope=AUTHOR` 按工号或账号搜文章，再按主题聚合创建人文章，输出候选专家和可能 skill 的建议型结果。</p>
-        <div class="chips">
-          <span class="chip amber">AUTHOR 检索</span>
-          <span class="chip amber">候选专家</span>
-          <span class="chip amber">skill 建议</span>
-        </div>
-        <a class="button amber" href="/ops-author-explorer">进入创建人检索页</a>
-      </article>
     </section>
 
-    <div class="note">
-      说明：你刚才看到的 `导入 tags` 属于 Source 元数据标签，只用于导入后的分类与筛选，不是抓取参数。这个字段会保留在 Wiki 抽取页，不再出现在运维工作台入口页。
-    </div>
+    <div class="note">说明：候选专家建议只是辅助筛选，不等价于专家结论；总命中数、样本抓取数和分页现在会分开显示。</div>
   </div>
 </body>
 </html>

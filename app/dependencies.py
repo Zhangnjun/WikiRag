@@ -6,11 +6,13 @@ from app.clients.internal_ai import InternalAIClient
 from app.clients.internal_embedding import InternalEmbeddingClient
 from app.config import get_settings
 from app.repositories.chunk_repository import ChunkRepository
+from app.repositories.candidate_expert_repository import CandidateExpertRepository
 from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.rag_repository import RAGRepository
 from app.repositories.source_repository import SourceRepository
 from app.repositories.sqlite import SQLiteRepository
 from app.services.chunk_service import ChunkService
+from app.services.candidate_expert_service import CandidateExpertService
 from app.services.classifier import DocumentClassifier
 from app.services.embedding_service import EmbeddingService
 from app.services.expert_profile_service import ExpertProfileService
@@ -34,6 +36,11 @@ def get_sqlite_repository() -> SQLiteRepository:
 @lru_cache(maxsize=1)
 def get_source_repository() -> SourceRepository:
     return SourceRepository(get_sqlite_repository())
+
+
+@lru_cache(maxsize=1)
+def get_candidate_expert_repository() -> CandidateExpertRepository:
+    return CandidateExpertRepository(get_sqlite_repository())
 
 
 @lru_cache(maxsize=1)
@@ -64,6 +71,11 @@ def get_wiki_recommend_service() -> WikiRecommendService:
 @lru_cache(maxsize=1)
 def get_expert_profile_service() -> ExpertProfileService:
     return ExpertProfileService(get_source_repository())
+
+
+@lru_cache(maxsize=1)
+def get_candidate_expert_service() -> CandidateExpertService:
+    return CandidateExpertService(get_candidate_expert_repository(), get_expert_profile_service())
 
 
 @lru_cache(maxsize=1)

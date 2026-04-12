@@ -109,6 +109,23 @@ class SQLiteRepository:
                     created_at TEXT NOT NULL,
                     debug_info_json TEXT NOT NULL DEFAULT '{}'
                 );
+
+                CREATE TABLE IF NOT EXISTS candidate_expert_records (
+                    candidate_id TEXT PRIMARY KEY,
+                    topic_query TEXT NOT NULL,
+                    created_by_name TEXT NOT NULL,
+                    created_by_account TEXT NOT NULL,
+                    article_count INTEGER NOT NULL DEFAULT 0,
+                    latest_updated_at TEXT NOT NULL DEFAULT '',
+                    possible_skills_json TEXT NOT NULL DEFAULT '[]',
+                    evidence_json TEXT NOT NULL DEFAULT '[]',
+                    recommendation TEXT NOT NULL DEFAULT '',
+                    related_articles_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL DEFAULT '待确认',
+                    notes TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
             self._ensure_columns(
@@ -129,6 +146,15 @@ class SQLiteRepository:
                     "error_message": "TEXT NOT NULL DEFAULT ''",
                     "embedding_json": "TEXT NOT NULL DEFAULT '[]'",
                     "metadata_json": "TEXT NOT NULL DEFAULT '{}'",
+                },
+            )
+            self._ensure_columns(
+                conn,
+                "candidate_expert_records",
+                {
+                    "status": "TEXT NOT NULL DEFAULT '待确认'",
+                    "notes": "TEXT NOT NULL DEFAULT ''",
+                    "related_articles_json": "TEXT NOT NULL DEFAULT '[]'",
                 },
             )
 

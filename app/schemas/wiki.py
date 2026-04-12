@@ -39,12 +39,14 @@ class WikiSearchItemResponse(BaseModel):
 class WikiSearchResponse(BaseModel):
     items: List[WikiSearchItemResponse]
     total: int
+    total_pages: int = 0
     page: int
     page_size: int
 
 
 class WikiAuthorSearchRequest(BaseModel):
     author_query: str
+    page: int = 1
     page_size: int = 10
     max_pages: int = 3
     wiki_sn: Optional[str] = None
@@ -55,6 +57,12 @@ class WikiAuthorSearchRequest(BaseModel):
 class WikiAuthorStatsResponse(BaseModel):
     author_query: str
     article_count: int
+    total_records: int = 0
+    fetched_records: int = 0
+    deduped_records: int = 0
+    fetched_pages: int = 0
+    total_pages: int = 0
+    current_page: int = 1
     latest_updated_at: str = ""
     wiki_titles: List[str] = Field(default_factory=list)
     high_frequency_keywords: List[str] = Field(default_factory=list)
@@ -67,8 +75,9 @@ class WikiAuthorSearchResponse(BaseModel):
 
 class WikiAuthorCandidateRequest(BaseModel):
     topic_query: str
-    page_size: int = 10
-    candidate_limit: int = 5
+    page: int = 1
+    page_size: int = 30
+    candidate_limit: int = 20
     author_page_size: int = 20
     author_max_pages: int = 3
     wiki_sn: Optional[str] = None
@@ -90,7 +99,40 @@ class WikiAuthorCandidateItemResponse(BaseModel):
 
 class WikiAuthorCandidateResponse(BaseModel):
     topic_query: str
+    total: int
+    total_pages: int = 0
+    page: int
+    page_size: int
     candidates: List[WikiAuthorCandidateItemResponse]
+
+
+class CandidateExpertSaveRequest(WikiAuthorCandidateItemResponse):
+    topic_query: str
+    notes: str = ""
+
+
+class CandidateExpertItemResponse(WikiAuthorCandidateItemResponse):
+    candidate_id: str
+    topic_query: str
+    status: str = "待确认"
+    notes: str = ""
+    created_at: str = ""
+    updated_at: str = ""
+
+
+class CandidateExpertListResponse(BaseModel):
+    items: List[CandidateExpertItemResponse]
+    total: int
+
+
+class CandidateExpertStatusUpdateRequest(BaseModel):
+    status: str
+    notes: str = ""
+
+
+class CandidateExpertPreviewResponse(BaseModel):
+    candidate: CandidateExpertItemResponse
+    profile_preview: Dict[str, Any]
 
 
 class WikiRecommendRequest(BaseModel):
