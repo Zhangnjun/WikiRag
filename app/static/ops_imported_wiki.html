@@ -25,7 +25,7 @@
     .desc, .meta { color: var(--muted); line-height: 1.7; font-size: 14px; }
     .nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     .nav a { text-decoration: none; color: var(--blue); font-weight: 700; }
-    .row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
     .field { margin-bottom: 12px; }
     .field label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
     input, select { width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
@@ -45,12 +45,12 @@
   <div class="page">
     <section class="panel">
       <h1>已导入 Wiki 文档</h1>
-      <div class="desc">这里查看已经导入到本地 Source 的 Wiki 文档，确认导入状态、创建人和后续 normalize 结果。</div>
+      <div class="desc">这里查看已经导入到本地 Source 的 Wiki 文档，可按标题、创建人、标签筛选，并核对导入状态与后续 normalize 结果。</div>
       <div class="nav">
         <a href="/rag-debug">返回入口</a>
         <a href="/ops-workbench">返回运维工作台</a>
         <a href="/ops-wiki-ingest">返回 Wiki 抽取页</a>
-        <a href="/ops-author-explorer">创建人检索 / 候选专家</a>
+        <a href="/ops-wiki-ingest">Wiki 搜索与入库</a>
       </div>
     </section>
 
@@ -70,14 +70,19 @@
           <input id="owner" placeholder="吴凯 / 30049962" />
         </div>
         <div class="field">
-          <label for="pageSize">page_size</label>
+          <label for="tags">标签包含</label>
+          <input id="tags" placeholder="wiki / 运维助手 / 工作台导入" />
+        </div>
+        <div class="field">
+          <label for="pageSize">每页展示数量</label>
           <input id="pageSize" type="number" value="20" />
         </div>
       </div>
       <div class="actions">
-        <button id="loadBtn">刷新列表</button>
+        <button id="loadBtn">查询已导入文档</button>
+        <button id="resetBtn" type="button">清空筛选</button>
       </div>
-      <div class="status" id="statusBox">默认只看 `source_type=wiki_api` 的已导入文档。</div>
+      <div class="status" id="statusBox">默认只看 `source_type=wiki_api` 的已导入文档；不填筛选条件时会展示全部已导入 Wiki。</div>
       <div class="error" id="errorBox"></div>
     </section>
 
@@ -148,6 +153,7 @@
       });
       if (el("title").value.trim()) params.set("title", el("title").value.trim());
       if (el("owner").value.trim()) params.set("owner", el("owner").value.trim());
+      if (el("tags").value.trim()) params.set("tags", el("tags").value.trim());
       const data = await api(`/api/source/list?${params.toString()}`);
       el("summaryBox").textContent = JSON.stringify({
         total: data.total,
@@ -155,9 +161,16 @@
         page_size: data.page_size,
       }, null, 2);
       renderItems(data.items || []);
-      showStatus(`已加载 ${data.items.length} 条 Wiki Source。`);
+      showStatus(`已查询到 ${data.total} 条已导入 Wiki，本页展示 ${data.items.length} 条。`);
     }
     el("loadBtn").onclick = () => loadImportedWiki().catch((err) => { showError(err.message); showStatus("加载失败"); });
+    el("resetBtn").onclick = () => {
+      el("title").value = "";
+      el("owner").value = "";
+      el("tags").value = "";
+      el("pageSize").value = "20";
+      loadImportedWiki().catch((err) => { showError(err.message); showStatus("重置后加载失败"); });
+    };
     loadImportedWiki().catch((err) => { showError(err.message); showStatus("初始化加载失败"); });
   </script>
 </body>

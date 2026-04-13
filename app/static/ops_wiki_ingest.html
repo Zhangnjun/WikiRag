@@ -104,6 +104,7 @@
     .list { display: grid; gap: 10px; }
     .item { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #fff; }
     .item.selected { border-color: var(--blue); background: #f8fbff; }
+    .item.interactive { cursor: pointer; }
     .chip { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 12px; font-weight: 700; }
     .chip.amber { background: var(--amber-soft); color: var(--amber); }
     .mono {
@@ -452,7 +453,7 @@
 
     function renderWikiCard(item, container, items, source) {
       const card = document.createElement("div");
-      card.className = "item";
+      card.className = "item interactive";
       if (state.selectedWiki && state.selectedWiki.sn === item.sn) card.classList.add("selected");
       card.innerHTML = `
         <h3>${item.title || "待补充"}</h3>
@@ -462,22 +463,32 @@
           <span class="chip">${item.kanban_title || "待补充"}</span>
         </div>
         <div class="meta" style="margin-top:8px;">${item.summary || ""}</div>
+        <div class="hint">点击卡片即可选中；点击按钮可直接导入。</div>
         <div class="actions">
-          <button data-action="select">选中</button>
           <button data-action="import" class="secondary">导入为 Source</button>
+          <button data-action="import-normalize">导入并标准化</button>
         </div>
       `;
-      card.querySelector('[data-action="select"]').onclick = () => {
+      card.onclick = () => {
         state.selectedWiki = item;
         renderSelectedState();
         if (source === "search") renderSearchResults(items);
         if (source === "author") renderAuthorResults(items);
         showStatus(`已选中 Wiki: ${item.title || item.sn}`);
       };
-      card.querySelector('[data-action="import"]').onclick = async () => {
+      card.querySelector('[data-action="import"]').onclick = async (evt) => {
+        evt.stopPropagation();
         state.selectedWiki = item;
         renderSelectedState();
         await importSelectedWiki();
+        if (source === "search") renderSearchResults(items);
+        if (source === "author") renderAuthorResults(items);
+      };
+      card.querySelector('[data-action="import-normalize"]').onclick = async (evt) => {
+        evt.stopPropagation();
+        state.selectedWiki = item;
+        renderSelectedState();
+        await importAndNormalizeSelectedWiki();
         if (source === "search") renderSearchResults(items);
         if (source === "author") renderAuthorResults(items);
       };
@@ -731,6 +742,12 @@
       });
       renderSelectedState();
       showStatus(`knowledge 已生成: ${state.knowledge.doc_id}`);
+    }
+
+    async function importAndNormalizeSelectedWiki() {
+      await importSelectedWiki();
+      await normalizeCurrentSource();
+      showStatus(`Wiki 已导入并完成标准化，可继续做本地知识搜索或 RAG 查询。`);
     }
 
     function clampPage(next, totalPages) {
